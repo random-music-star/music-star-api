@@ -1,25 +1,27 @@
 package com.curioussong.alsongdalsong.member.controller;
 
-import com.curioussong.alsongdalsong.member.dto.loginResponse;
+import com.curioussong.alsongdalsong.member.dto.guestLogin;
+import com.curioussong.alsongdalsong.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/member")
-@Slf4j
 public class MemberController {
 
-    @GetMapping("/login")
-    ResponseEntity<loginResponse> getToken() {
-        String token = UUID.randomUUID().toString();
-        log.info("사용자 임의 토큰 값 : {}", token);
-        return ResponseEntity.ok(new loginResponse(token));
+    private final MemberService memberService;
+
+    @GetMapping("/guest/signup")
+    ResponseEntity<guestLogin> getToken() {
+        return ResponseEntity.ok(new guestLogin(memberService.getToken()));
+    }
+
+    @PostMapping("/guest/login")
+    ResponseEntity<Void> guestLogin(@RequestBody guestLogin guestInfo) {
+        memberService.guestLogin(guestInfo.token());
+
+        return ResponseEntity.ok().build();
     }
 }

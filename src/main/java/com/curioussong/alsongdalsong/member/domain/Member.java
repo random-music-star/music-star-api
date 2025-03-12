@@ -19,7 +19,7 @@ public class Member {
     @Column(name = "username", nullable = false, unique = true, length = 20)
     private String username;
 
-    @Column(name = "password", nullable = false, length = 30)
+    @Column(name = "password", nullable = true, length = 30)
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -31,9 +31,8 @@ public class Member {
     }
 
     @Builder
-    public Member(String username, String password, MemberType type) {
+    public Member(String username, MemberType type) {
         this.username = username;
-        this.password = password;
         this.type = type;
     }
 }

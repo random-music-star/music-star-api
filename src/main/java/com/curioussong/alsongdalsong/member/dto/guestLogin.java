@@ -1,4 +1,4 @@
 package com.curioussong.alsongdalsong.member.dto;
 
-public record loginResponse(String token) {
+public record guestLogin(String token) {
 }
