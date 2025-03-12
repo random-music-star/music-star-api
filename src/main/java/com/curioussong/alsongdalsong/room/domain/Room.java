@@ -21,8 +21,11 @@ public class Room {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "host_id", nullable = false)
+    @JoinColumn(name = "host_id", nullable = true)
     private Member host;
+
+    @Column(name = "title", length = 15, nullable = false)
+    private String title;
 
     @Column(name = "password", length = 30)
     private String password;
@@ -33,8 +36,9 @@ public class Room {
     @Column(name = "max_game_round", nullable = false)
     private Integer maxGameRound;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "format", nullable = false, length = 25)
-    private String format;
+    private RoomFormat format;
 
     @Column(name = "play_time", nullable = false)
     private Integer playTime;
@@ -51,14 +55,19 @@ public class Room {
         WAITING, IN_PROGRESS, FINISHED
     }
 
+    public enum RoomFormat {
+        BOARD, GENERAL
+    }
+
     @Builder
-    public Room(Member host, String password, Integer maxPlayer, Integer maxGameRound, String format, Integer playTime, RoomStatus status) {
+    public Room(Member host, String title, String password, Integer maxPlayer, Integer maxGameRound, RoomFormat format, Integer playTime, RoomStatus status) {
         this.host = host;
+        this.title = title;
         this.password = password;
-        this.maxPlayer = maxPlayer;
-        this.maxGameRound = maxGameRound;
-        this.format = format;
-        this.playTime = playTime;
-        this.status = status;
+        this.maxPlayer = maxPlayer == null ? 10 : maxPlayer;
+        this.maxGameRound = maxGameRound == null ? 20 : maxGameRound;
+        this.format = format == null ? RoomFormat.GENERAL : format;
+        this.playTime = playTime == null ? 0 : playTime;
+        this.status = status == null ? RoomStatus.WAITING : status;
     }
 }
