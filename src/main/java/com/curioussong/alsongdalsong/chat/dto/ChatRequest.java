@@ -1,4 +1,4 @@
-package com.curioussong.alsongdalsong.socket.dto.chat;
+package com.curioussong.alsongdalsong.chat.dto;
 
 import lombok.Getter;
 

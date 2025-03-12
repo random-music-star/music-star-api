@@ -1,8 +1,8 @@
-package com.curioussong.alsongdalsong.socket.service;
+package com.curioussong.alsongdalsong.chat.service;
 
-import com.curioussong.alsongdalsong.socket.dto.chat.ChatRequest;
-import com.curioussong.alsongdalsong.socket.dto.chat.ChatResponse;
-import com.curioussong.alsongdalsong.socket.dto.chat.Response;
+import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
+import com.curioussong.alsongdalsong.chat.dto.ChatResponse;
+import com.curioussong.alsongdalsong.chat.dto.Response;
 import org.springframework.stereotype.Service;
 
 @Service

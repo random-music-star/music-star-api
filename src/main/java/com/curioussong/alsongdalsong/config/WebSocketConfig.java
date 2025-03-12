@@ -1,4 +1,4 @@
-package com.curioussong.alsongdalsong.socket.config;
+package com.curioussong.alsongdalsong.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
