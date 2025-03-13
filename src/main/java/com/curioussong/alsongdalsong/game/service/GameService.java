@@ -1,7 +1,10 @@
 package com.curioussong.alsongdalsong.game.service;
 
+import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponse;
+import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.result.ResultResponse;
 import com.curioussong.alsongdalsong.game.dto.result.ResultResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
@@ -42,6 +45,7 @@ public class GameService {
 
     private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
     private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
+    private Map<Long, Map<Integer, String>> roundAndSong = new HashMap<>(); // <roomId, <round, songTitle>> 쌍으로 저장
 
     public void startGame(Long channelId, Long roomId) {
         initializeGameSetting(roomId);
@@ -56,11 +60,14 @@ public class GameService {
 
     private void initializeGameSetting(Long roomId) {
         Map<Integer, GameMode> roundMap = new HashMap<>();
+        Map<Integer, String> songMap = new HashMap<>();
         for (int i=1;i<=20;i++) { // 현재는 한 게임당 20라운드 하드코딩
             roundMap.put(i,GameMode.FULL);
+            songMap.put(i, "톰보이");
         }
         roomAndRound.put(roomId, 1);
         roundAndMode.put(roomId, roundMap);
+        roundAndSong.put(roomId, songMap);
     }
 
     public void sendRoundInfo(String destination, Long roomId) {
@@ -89,10 +96,20 @@ public class GameService {
                     Thread.sleep(1000);
                 }
                 sendCountdown(destination, 0);
+                sendQuizInfo(destination);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }).start();
+    }
+
+    private void sendQuizInfo(String destination) {
+        messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
+                        .type("quizInfo")
+                        .quizResponse(QuizResponse.builder()
+                                .songUrl("https://www.youtube.com/watch?v=0wezH4MAncY")
+                                .build())
+                .build());
     }
 
     private void sendCountdown(String destination, int countdown) {
@@ -158,7 +175,14 @@ public class GameService {
                 .build());
     }
 
-    public void answer(String userName, Long channelId, Long roomId) {
+    public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
+        String message = chatRequest.getRequest().getMessage();
+        int nowRound = roomAndRound.get(roomId);
+        String nowAnswer = roundAndSong.get(roomId).get(nowRound);
+        return message.equals(nowAnswer);
+    }
+
+    public void handleAnswer(String userName, Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         // 추후 DB에서 노래 문제 리스트를 Map
         messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()

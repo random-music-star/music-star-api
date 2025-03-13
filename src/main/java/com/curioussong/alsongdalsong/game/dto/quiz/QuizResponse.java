@@ -8,6 +8,5 @@ import lombok.Setter;
 @Setter
 @Builder
 public class QuizResponse {
-    private String type;
-    private Response response;
+    private String songUrl;
 }

@@ -27,10 +27,8 @@ public class ChatService {
     }
 
     public ChatResponse roomChatMessage(ChatRequest chatRequest, Long channelId, Long roomId) {
-        String userName = chatRequest.getRequest().getSender();
-        String message = chatRequest.getRequest().getMessage();
-        if (message.equals("톰보이")) {
-            gameService.answer(userName, channelId, roomId);
+        if (gameService.checkAnswer(chatRequest, roomId)) {
+            gameService.handleAnswer(chatRequest.getRequest().getSender(), channelId, roomId);
         }
         return ChatResponse.builder()
                 .type(chatRequest.getType())

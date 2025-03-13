@@ -7,6 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class Response {
-    private String songUrl;
+public class QuizResponseDTO {
+    private String type;
+    private QuizResponse quizResponse;
 }
