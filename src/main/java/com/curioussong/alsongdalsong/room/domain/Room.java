@@ -47,9 +47,13 @@ public class Room {
     @Column(name = "status", nullable = false)
     private RoomStatus status;
 
-    @OneToMany
-    @JoinColumn(name = "room_id")
-    private List<Member> members = new ArrayList<>();
+    @ElementCollection
+    @CollectionTable(
+            name = "room_member",
+            joinColumns = @JoinColumn(name = "room_id")
+    )
+    @Column(name = "member_id")
+    private List<Long> memberIds = new ArrayList<>();
 
     public enum RoomStatus {
         WAITING, IN_PROGRESS, FINISHED
@@ -69,5 +73,11 @@ public class Room {
         this.format = format == null ? RoomFormat.GENERAL : format;
         this.playTime = playTime == null ? 0 : playTime;
         this.status = status == null ? RoomStatus.WAITING : status;
+    }
+
+    public void update(String title, String password, RoomFormat format){
+        this.title = title;
+        this.password = password;
+        this.format = format;
     }
 }

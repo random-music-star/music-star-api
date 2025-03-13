@@ -34,4 +34,8 @@ public class MemberService {
             throw new RuntimeException("Member not found");
         }
     }
+
+    public  Member getMemberByToken(String token) {
+        return memberRepository.findByUsername(token);
+    }
 }
