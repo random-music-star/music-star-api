@@ -59,4 +59,9 @@ public class RoomService {
         eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
         room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
     }
+
+    @Transactional
+    public Room findRoomById(Long id) {
+        return roomRepository.findById(id).orElse(null);
+    }
 }
