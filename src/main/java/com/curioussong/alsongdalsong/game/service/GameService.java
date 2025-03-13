@@ -1,24 +1,33 @@
 package com.curioussong.alsongdalsong.game.service;
 
+import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.dto.result.ResultResponse;
+import com.curioussong.alsongdalsong.game.dto.result.ResultResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.round.RoundResponse;
+import com.curioussong.alsongdalsong.game.dto.round.RoundResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.timer.Response;
 import com.curioussong.alsongdalsong.game.dto.timer.TimerResponse;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponse;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
+import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.service.RoomService;
+import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
+import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
-import java.util.ArrayList;
-import java.util.List;
+
+import javax.swing.text.html.Option;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +37,48 @@ public class GameService {
     private final SimpMessagingTemplate messagingTemplate;
     private final RoomService roomService;
     private final MemberService memberService;
+    private final GameRepository gameRepository;
+    private final RoomGameService roomGameService;
 
-    public void startGame(String channelId, String roomId) {
-        String destination = String.format("/topic/channel/%s/room/%s", channelId, roomId);
+    private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
+    private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
+
+    public void startGame(Long channelId, Long roomId) {
+        initializeGameSetting(roomId);
+        startRound(channelId, roomId);
+    }
+
+    public void startRound(Long channelId, Long roomId) {
+        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        sendRoundInfo(destination, roomId);
         startCountdown(destination);
+    }
+
+    private void initializeGameSetting(Long roomId) {
+        Map<Integer, GameMode> roundMap = new HashMap<>();
+        for (int i=1;i<=20;i++) { // 현재는 한 게임당 20라운드 하드코딩
+            roundMap.put(i,GameMode.FULL);
+        }
+        roomAndRound.put(roomId, 1);
+        roundAndMode.put(roomId, roundMap);
+    }
+
+    public void sendRoundInfo(String destination, Long roomId) {
+        RoomGame roomGame = roomGameService.getRoomGameByRoomId(roomId);
+        Long gameId = roomGame.getGame().getId();
+        Game game = gameRepository.findById(gameId).orElseThrow(() -> new RuntimeException("gameId not found"));
+        GameMode gameMode = game.getMode();
+//        Random random = new Random();
+//        GameMode selectedGameMode = gameModes.get(random.nextInt(gameModes.size()));
+//        log.info("선택된 게임 모드: {}", selectedGameMode);
+
+        messagingTemplate.convertAndSend(destination, RoundResponseDTO.builder()
+                        .type("roundInfo")
+                        .roundResponse(RoundResponse.builder()
+                                .mode(gameMode)
+                                .round(roomAndRound.get(roomId))
+                                .build())
+                .build());
     }
 
     public void startCountdown(String destination) {
@@ -56,7 +103,6 @@ public class GameService {
                         .build())
                 .build();
 
-        log.info("Sending countdown response: {}", timerResponse);
         messagingTemplate.convertAndSend(destination, timerResponse);
     }
 
@@ -110,5 +156,21 @@ public class GameService {
                         .userInfoList(userInfoList)
                         .build())
                 .build());
+    }
+
+    public void answer(String userName, Long channelId, Long roomId) {
+        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        // 추후 DB에서 노래 문제 리스트를 Map
+        messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()
+                        .type("gameResult")
+                        .response(ResultResponse.builder()
+                                .winner(userName)
+                                .songTitle("톰보이")
+                                .singer("여자아이들")
+                                .score(1)
+                                .build())
+                .build());
+        roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
+        startRound(channelId, roomId);
     }
 }

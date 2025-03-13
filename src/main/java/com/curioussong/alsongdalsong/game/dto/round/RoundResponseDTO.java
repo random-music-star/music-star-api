@@ -1,6 +1,5 @@
 package com.curioussong.alsongdalsong.game.dto.round;
 
-import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -8,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class RoundResponse {
-    private GameMode mode;
-    private Integer round;
+public class RoundResponseDTO {
+    private String type;
+    private RoundResponse roundResponse;
 }

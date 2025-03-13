@@ -18,7 +18,7 @@ public class GameController {
 
     @MessageMapping("/channel/{channelId}/room/{roomId}/start")
     @SendTo("/topic/channel/{channelId}/room/{roomId}")
-    public void handleRequest(StartRequest request, @DestinationVariable String channelId, @DestinationVariable String roomId) {
+    public void handleRequest(StartRequest request, @DestinationVariable Long channelId, @DestinationVariable Long roomId) {
         if (request.getType().equals("gameStart")) {
             gameService.startGame(channelId, roomId);
         }
