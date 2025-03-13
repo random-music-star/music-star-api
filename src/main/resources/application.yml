@@ -1,24 +1,4 @@
-#spring:
-#  datasource:
-#    url: jdbc:mysql://localhost:3306/alsongdalsong?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-#    username: ssafy
-#    password: ssafy
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-#
-#  jpa:
-#    hibernate:
-#      ddl-auto: update
-#    properties:
-#      hibernate:
-#        dialect: org.hibernate.dialect.MySQL8Dialect
-#    show-sql: true
-
 spring:
-  profiles:
-    active: local
-  config:
-    import: optional:classpath:application-${spring.profiles.active}.yml
-
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
@@ -31,4 +11,11 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
-    show-sql: true
+        show-sql: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+    import: application-local.yml
