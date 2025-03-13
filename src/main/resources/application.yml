@@ -19,3 +19,10 @@ spring:
     activate:
       on-profile: local
     import: application-local.yml
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+    import: application-prod.yml
