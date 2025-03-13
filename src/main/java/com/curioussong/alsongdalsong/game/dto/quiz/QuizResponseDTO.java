@@ -9,5 +9,5 @@ import lombok.Setter;
 @Builder
 public class QuizResponseDTO {
     private String type;
-    private QuizResponse quizResponse;
+    private QuizResponse response;
 }
