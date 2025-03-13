@@ -15,7 +15,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
 
-    public String getToken() {
+    public String guestLogin() {
         String token = "guest_" + UUID.randomUUID().toString().substring(0, 8);
         log.info("사용자 임의 토큰 값 : {}", token);
 
@@ -27,12 +27,6 @@ public class MemberService {
 
         memberRepository.save(member);
         return token;
-    }
-
-    public void guestLogin(String token) {
-        if (!memberRepository.existsByUsername(token)) {
-            throw new RuntimeException("Member not found");
-        }
     }
 
     public  Member getMemberByToken(String token) {
