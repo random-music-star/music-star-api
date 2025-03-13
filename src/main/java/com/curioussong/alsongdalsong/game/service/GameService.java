@@ -106,7 +106,7 @@ public class GameService {
     private void sendQuizInfo(String destination) {
         messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
                         .type("quizInfo")
-                        .quizResponse(QuizResponse.builder()
+                        .response(QuizResponse.builder()
                                 .songUrl("https://www.youtube.com/watch?v=0wezH4MAncY")
                                 .build())
                 .build());
