@@ -109,7 +109,7 @@ public class GameService {
                     Thread.sleep(1000);
                 }
                 sendCountdown(destination, 0);
-                countSongPlayTime(destination, 10);
+                countSongPlayTime(destination, 30);
                 sendQuizInfo(destination);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -122,11 +122,11 @@ public class GameService {
 
         scheduler.schedule(() -> {
             sendConsonantHint(destination);
-        }, 3, TimeUnit.SECONDS);
+        }, 10, TimeUnit.SECONDS);
 
         scheduler.schedule(() -> {
             sendSingerHint(destination);
-        }, 5, TimeUnit.SECONDS);
+        }, 20, TimeUnit.SECONDS);
 
         scheduler.schedule(() -> {
             triggerEndEvent(destination); // 대기 시간 후 실행할 메서드
