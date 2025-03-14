@@ -32,13 +32,13 @@ import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -76,7 +76,7 @@ public class GameService {
     private final Map<Long, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>(); // 방별 타이머 스케줄러
     private final Map<Long, Map<String, Boolean>> readyStatusMap = new ConcurrentHashMap<>();
 
-
+    @Transactional
     public void startGame(Long channelId, Long roomId) {
         if (!areAllPlayersReady(roomId)) {
             return;
@@ -371,6 +371,7 @@ public class GameService {
         }
     }
 
+//    Todo: 방에 입장한 유저만 레디 상태 변경이 가능하도록 변경 필요
     @Transactional
     public void toggleReady(String username, Long channelId, Long roomId) {
         Map<String, Boolean> roomReadyStatus = readyStatusMap.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
