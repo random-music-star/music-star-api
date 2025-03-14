@@ -235,7 +235,12 @@ public class GameService {
         List<UserInfo> userInfoList = new ArrayList<>();
         for (Long memberId : memberIds) {
             Member member = memberService.getMemberById(memberId);
-            UserInfo userInfo = new UserInfo(member.getUsername(), false);
+            UserInfo userInfo;
+            if (memberId == room.getHost().getId()) {
+                userInfo = new UserInfo(member.getUsername(), false, true);
+            } else {
+                userInfo = new UserInfo(member.getUsername(), false, false);
+            }
             userInfoList.add(userInfo);
         }
 
