@@ -82,6 +82,9 @@ public class GameService {
             return;
         }
         eventPublisher.publishEvent(new GameStatusEvent(roomId, RoomStatus.IN_PROGRESS));
+        Room room = roomRepository.findById(roomId).orElse(null);
+        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        sendRoomInfoToSubscriber(destination, room);
         initializeGameSetting(roomId);
         startRound(channelId, roomId);
 
