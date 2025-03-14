@@ -3,6 +3,7 @@ package com.curioussong.alsongdalsong.game.service;
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.dto.next.NextResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponse;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.result.ResultResponse;
@@ -29,8 +30,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.swing.text.html.Option;
 import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -45,7 +49,14 @@ public class GameService {
 
     private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
     private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
-    private Map<Long, Map<Integer, String>> roundAndSong = new HashMap<>(); // <roomId, <round, songTitle>> 쌍으로 저장
+    private Map<Long, Map<Integer, String>> roundAndSong = new HashMap<>(); // <roomId, <round, songTitle>> 쌍으로 저장p
+
+    private ScheduledFuture<?> scheduledTask;
+    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    private final Map<Long, AtomicBoolean> roomStatusMap = new ConcurrentHashMap<>(); // 방별 진행 상태
+    private final Map<Long, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>(); // 방별 타이머 스케줄러
+
 
     public void startGame(Long channelId, Long roomId) {
         initializeGameSetting(roomId);
@@ -96,11 +107,43 @@ public class GameService {
                     Thread.sleep(1000);
                 }
                 sendCountdown(destination, 0);
+                countSongPlayTime(destination, 10);
                 sendQuizInfo(destination);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
         }).start();
+    }
+
+    private void countSongPlayTime(String destination, int waitTimeInSeconds) {
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.schedule(() -> {
+            triggerEndEvent(destination); // 대기 시간 후 실행할 메서드
+            scheduler.shutdown();
+        }, waitTimeInSeconds, TimeUnit.SECONDS);
+    }
+
+    public void cancelTimerAndTriggerImmediately(String destination) {
+        if (scheduledTask != null && !scheduledTask.isDone()) {
+            scheduledTask.cancel(false);
+            triggerEndEvent(destination);
+        }
+    }
+
+    private void triggerEndEvent(String destination) {
+        messagingTemplate.convertAndSend(destination, NextResponseDTO.builder()
+                .type("next")
+                .build());
+
+        Pattern pattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
+        Matcher matcher = pattern.matcher(destination);
+
+        if (matcher.matches()) {
+            Long channelId = Long.parseLong(matcher.group(1)); // 첫 번째 캡처 그룹 -> channelId
+            Long roomId = Long.parseLong(matcher.group(2)); // 두 번째 캡처 그룹 -> roomId
+
+            scheduler.schedule(() -> startRound(channelId, roomId), 5, TimeUnit.SECONDS);
+        }
     }
 
     private void sendQuizInfo(String destination) {
@@ -195,6 +238,5 @@ public class GameService {
                                 .build())
                 .build());
         roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
-        startRound(channelId, roomId);
     }
 }
