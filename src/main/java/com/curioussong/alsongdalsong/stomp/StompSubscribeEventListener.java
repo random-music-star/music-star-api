@@ -40,7 +40,13 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         String sessionId = accessor.getSessionId(); // 각 클라이언트 연결 식별하는 고유 id
 
         if (destination != null && sessionId != null && destination.matches("^/topic/channel/\\d+/room/\\d+$")) {
-            String userName = accessor.getHeader("Authorization").toString();
+            String userName = "";
+            if (accessor.getNativeHeader("Authorization") != null &&
+                    !accessor.getNativeHeader("Authorization").isEmpty()) {
+                userName = accessor.getNativeHeader("Authorization").get(0);
+            }
+            log.info("username {}", userName);
+            log.info("accessor {}", accessor);
             messagingTemplate.convertAndSend(destination, TestResponseDTO.builder()
                             .type("headerTest")
                             .response(TestResponse.builder()
