@@ -3,6 +3,8 @@ package com.curioussong.alsongdalsong.game.service;
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
+import com.curioussong.alsongdalsong.game.dto.hint.HintResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.next.NextResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponse;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponseDTO;
@@ -117,6 +119,15 @@ public class GameService {
 
     private void countSongPlayTime(String destination, int waitTimeInSeconds) {
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+        scheduler.schedule(() -> {
+            sendConsonantHint(destination);
+        }, 3, TimeUnit.SECONDS);
+
+        scheduler.schedule(() -> {
+            sendSingerHint(destination);
+        }, 5, TimeUnit.SECONDS);
+
         scheduler.schedule(() -> {
             triggerEndEvent(destination); // 대기 시간 후 실행할 메서드
             scheduler.shutdown();
@@ -144,6 +155,25 @@ public class GameService {
 
             scheduler.schedule(() -> startRound(channelId, roomId), 5, TimeUnit.SECONDS);
         }
+    }
+
+    private void sendConsonantHint(String destination) {
+        messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
+                        .type("hint")
+                        .response(HintResponse.builder()
+                                .title("ㅌㅂㅇ")
+                                .build())
+                .build());
+    }
+
+    private void sendSingerHint(String destination) {
+        messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
+                .type("hint")
+                .response(HintResponse.builder()
+                        .title("ㅌㅂㅇ")
+                        .singer("(여자)아이들")
+                        .build())
+                .build());
     }
 
     private void sendQuizInfo(String destination) {
