@@ -4,9 +4,11 @@ import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.dto.CreateRequest;
 import com.curioussong.alsongdalsong.room.dto.CreateResponse;
+import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.dto.UpdateRequest;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,5 +35,13 @@ public class RoomController {
         Member member = memberService.getMemberByToken(token);
         roomService.updateRoom(member, request);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<RoomDTO>> getRooms(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "8") int size) {
+        Page<RoomDTO> roomsPage = roomService.getRooms(page, size);
+        return ResponseEntity.ok(roomsPage);
     }
 }

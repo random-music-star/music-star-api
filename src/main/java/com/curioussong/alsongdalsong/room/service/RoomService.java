@@ -4,15 +4,22 @@ import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.CreateRequest;
 import com.curioussong.alsongdalsong.room.dto.CreateResponse;
+import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.dto.UpdateRequest;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Slf4j
 @Service
@@ -22,7 +29,6 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-//  Todo member 실제 방 생성 member로 적용
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
         Room room = Room.builder()
@@ -63,5 +69,19 @@ public class RoomService {
     @Transactional
     public Room findRoomById(Long id) {
         return roomRepository.findById(id).orElse(null);
+    }
+
+    @Transactional(readOnly=true)
+    public Page<RoomDTO> getRooms(int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        List<Room.RoomStatus> activeStatuses = Arrays.asList(
+                Room.RoomStatus.WAITING,
+                Room.RoomStatus.IN_PROGRESS
+        );
+
+        Page<Room> roomPage = roomRepository.findByStatusInOrderByUpdatedAtDesc(activeStatuses, pageable);
+
+        return roomPage.map(Room::toDto);
     }
 }

@@ -2,14 +2,13 @@ package com.curioussong.alsongdalsong.room.event;
 
 import com.curioussong.alsongdalsong.common.sse.SseEmitterManager;
 import com.curioussong.alsongdalsong.room.domain.Room;
-import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 @RequiredArgsConstructor
@@ -18,27 +17,24 @@ public class RoomEventListener {
     private final RoomRepository roomRepository;
     private final SseEmitterManager sseEmitterManager;
 
+    // 비동기로 분리하는게? 현재는 동기처리 방식
     @EventListener
     public void handleRoomUpdatedEvent(RoomUpdatedEvent event) {
-        List<Room> rooms = roomRepository.findAll();
+        if (event.actionType() != RoomUpdatedEvent.ActionType.DELETED) {
+            Room room = roomRepository.findById(event.roomId()).orElse(null);
+            if (room != null) {
+                Map<String, Object> data = new HashMap<>();
+                data.put("room", room.toDto());
+                data.put("actionType", event.actionType().name());
 
-        List<RoomDTO> roomDtos = rooms.stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+                sseEmitterManager.sendToAll("lobby", "ROOM_UPDATED", data);
+            }
+        } else {
+            Map<String, Object> data = new HashMap<>();
+            data.put("roomId", event.roomId());
+            data.put("actionType", "DELETED");
 
-        sseEmitterManager.sendToAll("lobby", "ROOM_LIST_UPDATED", roomDtos);
-    }
-
-    private RoomDTO convertToDto(Room room) {
-        return RoomDTO.builder()
-                .id(room.getId())
-                .title(room.getTitle())
-                .hostName(room.getHost().getUsername())
-                .format(room.getFormat().name())
-                .maxPlayer(room.getMaxPlayer())
-                .currentPlayers(room.getMemberIds().size())
-                .hasPassword(room.getPassword() != null && !room.getPassword().isEmpty())
-                .status(room.getStatus().name())
-                .build();
+            sseEmitterManager.sendToAll("lobby", "ROOM_UPDATED", data);
+        }
     }
 }

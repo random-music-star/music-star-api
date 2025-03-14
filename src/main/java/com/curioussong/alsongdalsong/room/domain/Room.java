@@ -1,12 +1,16 @@
 package com.curioussong.alsongdalsong.room.domain;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -14,6 +18,7 @@ import java.util.List;
 @Getter
 @Table(name = "room")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 public class Room {
 
     @Id
@@ -47,6 +52,10 @@ public class Room {
     @Column(name = "status", nullable = false)
     private RoomStatus status;
 
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
     @ElementCollection
     @CollectionTable(
             name = "room_member",
@@ -79,5 +88,20 @@ public class Room {
         this.title = title;
         this.password = password;
         this.format = format;
+    }
+
+    public RoomDTO toDto(){
+        return RoomDTO.builder()
+                .id(this.id)
+                .title(this.title)
+                .hostName(this.host.getUsername())
+                .format(this.format.name())
+                .maxPlayer(this.maxPlayer)
+                .currentPlayers(this.memberIds.size())
+                .maxGameRound(this.maxGameRound)
+                .playTime(this.playTime)
+                .hasPassword(this.password != null && !this.password.isEmpty())
+                .status(this.status.name())
+                .build();
     }
 }
