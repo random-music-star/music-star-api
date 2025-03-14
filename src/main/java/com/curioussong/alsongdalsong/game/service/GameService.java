@@ -23,6 +23,7 @@ import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
+import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
@@ -47,11 +48,13 @@ public class GameService {
     private final RoomService roomService;
     private final MemberService memberService;
     private final GameRepository gameRepository;
+    private final RoomRepository roomRepository;
     private final RoomGameService roomGameService;
 
     private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
     private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
     private Map<Long, Map<Integer, String>> roundAndSong = new HashMap<>(); // <roomId, <round, songTitle>> 쌍으로 저장p
+    private Map<Long, Integer> skipCount = new HashMap<>();
 
     private ScheduledFuture<?> scheduledTask;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -68,6 +71,7 @@ public class GameService {
     public void startRound(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         sendRoundInfo(destination, roomId);
+        skipCount.put(roomId, 0);
         startCountdown(destination);
     }
 
@@ -273,5 +277,26 @@ public class GameService {
                                 .build())
                 .build());
         roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
+    }
+
+    public void incrementSkipCount(Long roomId, Long channelId) {
+        skipCount.put(roomId, skipCount.getOrDefault(roomId, 0) + 1);
+
+        int participantCount = roomRepository.findById(roomId)
+                .map(room -> room.getMemberIds().size())
+                .orElse(0);
+
+        log.info("Room {} skip count: {}/{}", roomId, skipCount.get(roomId), participantCount);
+
+        // 참가자 절반 초과 시 즉시 다음 라운드 시작
+        if (skipCount.get(roomId) > participantCount / 2) {
+            log.info("Skip count exceeded threshold, moving to next round.");
+            String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+            cancelTimerAndTriggerImmediately(destination);
+
+            // 다음 라운드
+            roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
+            startRound(channelId, roomId);
+        }
     }
 }

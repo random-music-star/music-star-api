@@ -30,6 +30,12 @@ public class ChatService {
         if (gameService.checkAnswer(chatRequest, roomId)) {
             gameService.handleAnswer(chatRequest.getRequest().getSender(), channelId, roomId);
         }
+
+        // Skip 요청 처리
+        if (".".equals(chatRequest.getRequest().getMessage())) {
+            gameService.incrementSkipCount(roomId, channelId);
+        }
+
         return ChatResponse.builder()
                 .type(chatRequest.getType())
                 .response(Response.builder()

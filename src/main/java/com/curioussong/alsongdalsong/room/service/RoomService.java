@@ -1,6 +1,7 @@
 package com.curioussong.alsongdalsong.room.service;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.CreateRequest;
 import com.curioussong.alsongdalsong.room.dto.CreateResponse;
@@ -28,6 +29,7 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final MemberRepository memberRepository;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -48,6 +50,16 @@ public class RoomService {
         return CreateResponse.builder()
                 .roomId(room.getId())
                 .build();
+    }
+
+    @Transactional
+    public void joinRoom(Long roomId, String username) {
+        Room room = roomRepository.findById(roomId).orElse(null);
+
+        Member member = memberRepository.findByUsername(username);
+
+        // 방에 이미 최대인원이 있는지 나중에 검증 필요
+        room.getMemberIds().add(member.getId());
     }
 
     @Transactional

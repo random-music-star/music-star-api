@@ -1,6 +1,8 @@
 package com.curioussong.alsongdalsong.stomp;
 
 import com.curioussong.alsongdalsong.game.service.GameService;
+import com.curioussong.alsongdalsong.room.repository.RoomRepository;
+import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
     private final SimpMessagingTemplate messagingTemplate;
     private final Map<String, Set<String>> subscribedUsers = new ConcurrentHashMap<>();
     private final GameService gameService;
+    private final RoomService roomService;
 
     // 토픽 구독을 감지하는 메서드
     @Override
@@ -34,6 +37,16 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         String sessionId = accessor.getSessionId(); // 각 클라이언트 연결 식별하는 고유 id
 
         if (destination != null && sessionId != null && destination.matches("^/topic/channel/\\d+/room/\\d+$")) {
+            // 정규식: 마지막 숫자 추출
+            Pattern pattern = Pattern.compile(".*/(\\d+)$");
+            Matcher matcher = pattern.matcher(destination);
+
+//            if (matcher.find()) { //
+//                Long roomId = Long.valueOf(matcher.group(1)); // 마지막 숫자 추출
+//                roomService.joinRoom(roomId, username);
+//                log.info("Extracted Room ID: {}", roomId);
+//            }
+
             sendRoomInfoAndUserInfoToSubscriber(destination); // 방 입장 시, 해당 방에 입장한 사용자들에게 방 정보와 사용자 목록을 내려줌.
         }
     }
