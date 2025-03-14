@@ -1,4 +1,6 @@
 package com.curioussong.alsongdalsong.game.event;
 
-public record GameStatusEvent(Long roomId) {
+import com.curioussong.alsongdalsong.room.domain.Room;
+
+public record GameStatusEvent(Long roomId, Room.RoomStatus status) {
 }

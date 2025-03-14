@@ -21,13 +21,13 @@ public class GameStatusListener {
 
     @EventListener
     @Transactional
-    public void handleGameStartedEvent(GameStatusEvent event) {
+    public void handleGameStatusEvent(GameStatusEvent event) {
         Room room = roomRepository.findById(event.roomId()).orElse(null);
         if (room == null) {
             return;
         }
 
-        room.updateStatus(Room.RoomStatus.IN_PROGRESS);
+        room.updateStatus(event.status());
         roomRepository.save(room);
 
         sendRoomUpdateToClients(room);

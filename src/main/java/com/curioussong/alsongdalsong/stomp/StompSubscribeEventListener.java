@@ -1,5 +1,8 @@
 package com.curioussong.alsongdalsong.stomp;
 
+import com.curioussong.alsongdalsong.game.dto.test.TestResponse;
+import com.curioussong.alsongdalsong.game.dto.test.TestResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
 import com.curioussong.alsongdalsong.game.service.GameService;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
@@ -37,14 +40,19 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         String sessionId = accessor.getSessionId(); // 각 클라이언트 연결 식별하는 고유 id
 
         if (destination != null && sessionId != null && destination.matches("^/topic/channel/\\d+/room/\\d+$")) {
+            String userName = accessor.getHeader("Authorization").toString();
+            messagingTemplate.convertAndSend(destination, TestResponseDTO.builder()
+                            .type("headerTest")
+                            .response(TestResponse.builder()
+                                    .userName(userName)
+                                    .build())
+                    .build());
             // 정규식: 마지막 숫자 추출
             Pattern pattern = Pattern.compile(".*/(\\d+)$");
             Matcher matcher = pattern.matcher(destination);
 
             if (matcher.find()) { //
                 Long roomId = Long.valueOf(matcher.group(1)); // 마지막 숫자 추출
-                // 방 입장 시 WAITING 상태로 설정
-                gameService.setRoomStatusWAITING(roomId);
 //                roomService.joinRoom(roomId, username);
 //                log.info("Extracted Room ID: {}", roomId);
             }
