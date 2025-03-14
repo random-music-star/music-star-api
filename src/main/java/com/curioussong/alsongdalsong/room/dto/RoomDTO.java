@@ -3,6 +3,8 @@ package com.curioussong.alsongdalsong.room.dto;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 @Builder
 public class RoomDTO {
@@ -16,5 +18,10 @@ public class RoomDTO {
     private Integer playTime;
     private String status;
     private boolean hasPassword;
-    private String gameMode;
+    private List<String> gameModes;
+
+    public RoomDTO setGameModes(List<String> gameModes) {
+        this.gameModes = gameModes;
+        return this;
+    }
 }

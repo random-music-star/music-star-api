@@ -2,12 +2,15 @@ package com.curioussong.alsongdalsong.room.event;
 
 import com.curioussong.alsongdalsong.common.sse.SseEmitterManager;
 import com.curioussong.alsongdalsong.room.domain.Room;
+import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -24,7 +27,10 @@ public class RoomEventListener {
             Room room = roomRepository.findById(event.roomId()).orElse(null);
             if (room != null) {
                 Map<String, Object> data = new HashMap<>();
-                data.put("room", room.toDto());
+                RoomDTO roomDTO = room.toDto();
+                roomDTO.setGameModes(List.of("FULL"));
+
+                data.put("room", roomDTO);
                 data.put("actionType", event.actionType().name());
 
                 sseEmitterManager.sendToAll("lobby", "ROOM_UPDATED", data);

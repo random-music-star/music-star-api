@@ -30,6 +30,11 @@ public class SseController {
         try {
             Page<RoomDTO> roomPage = roomService.getRooms(0, 8);
 
+//          Todo: gameMode 실제 값으로 변경
+            for (RoomDTO roomDTO : roomPage.getContent()) {
+                roomDTO.setGameModes(List.of("FULL"));
+            }
+
             Map<String, Object> response = new HashMap<>();
             response.put("rooms", roomPage.getContent());
             response.put("totalPages", roomPage.getTotalPages());
