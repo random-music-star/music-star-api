@@ -10,4 +10,5 @@ import java.util.List;
 @Builder
 public class UserInfoResponse {
     private List<UserInfo> userInfoList;
+    private boolean allReady;
 }

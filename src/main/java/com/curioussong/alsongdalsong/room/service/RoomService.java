@@ -8,6 +8,7 @@ import com.curioussong.alsongdalsong.room.dto.CreateResponse;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.dto.UpdateRequest;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
+import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -60,6 +63,8 @@ public class RoomService {
 
         // 방에 이미 최대인원이 있는지 나중에 검증 필요
         room.getMemberIds().add(member.getId());
+
+        eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), username));
     }
 
     @Transactional

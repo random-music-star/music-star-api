@@ -24,6 +24,7 @@ import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
+import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
@@ -32,6 +33,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -64,12 +66,35 @@ public class GameService {
 
     private final Map<Long, AtomicBoolean> roomStatusMap = new ConcurrentHashMap<>(); // 방별 진행 상태
     private final Map<Long, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>(); // 방별 타이머 스케줄러
+    private final Map<Long, Map<String, Boolean>> readyStatusMap = new ConcurrentHashMap<>();
 
 
     public void startGame(Long channelId, Long roomId) {
+        if (!areAllPlayersReady(roomId)) {
+            return;
+        }
         eventPublisher.publishEvent(new GameStatusEvent(roomId));
         initializeGameSetting(roomId);
         startRound(channelId, roomId);
+
+        readyStatusMap.remove(roomId);
+    }
+
+    private boolean areAllPlayersReady(Long roomId) {
+        Room room = roomService.findRoomById(roomId);
+        List<Long> memberIds = room.getMemberIds();
+        Map<String, Boolean> roomReadyStatus = readyStatusMap.getOrDefault(roomId, new ConcurrentHashMap<>());
+
+        for (Long memberId : memberIds) {
+            Member member = memberService.getMemberById(memberId);
+            boolean isReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(member.getUsername(), false));
+
+            if (!isReady) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public void startRound(Long channelId, Long roomId) {
@@ -241,14 +266,23 @@ public class GameService {
     private void sendUserInfoToSubscriber(String destination, Room room) {
         List<Long> memberIds = room.getMemberIds();
         List<UserInfo> userInfoList = new ArrayList<>();
+
+        boolean allReady = true;
+
+        Map<String, Boolean> roomReadyStatus = readyStatusMap.getOrDefault(room.getId(), new ConcurrentHashMap<>());
+
         for (Long memberId : memberIds) {
             Member member = memberService.getMemberById(memberId);
-            UserInfo userInfo;
-            if (memberId == room.getHost().getId()) {
-                userInfo = new UserInfo(member.getUsername(), false, true);
-            } else {
-                userInfo = new UserInfo(member.getUsername(), false, false);
+            boolean isHost = memberId.equals(room.getHost().getId());
+            boolean isReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(member.getUsername(), false));
+
+            log.debug("User {} ready status in response: {}", member.getUsername(), isReady);
+
+            if (!isReady) {
+                allReady = false;
             }
+
+            UserInfo userInfo = new UserInfo(member.getUsername(), isReady, isHost);
             userInfoList.add(userInfo);
         }
 
@@ -257,6 +291,7 @@ public class GameService {
                 .type("userInfo")
                 .response(UserInfoResponse.builder()
                         .userInfoList(userInfoList)
+                        .allReady(allReady)
                         .build())
                 .build());
     }
@@ -290,7 +325,7 @@ public class GameService {
                 .map(room -> room.getMemberIds().size())
                 .orElse(0);
 
-        log.info("Room {} skip count: {}/{}", roomId, skipCount.get(roomId), participantCount);
+        log.debug("Room {} skip count: {}/{}", roomId, skipCount.get(roomId), participantCount);
 
         // 참가자 절반 초과 시 즉시 다음 라운드 시작
         if (skipCount.get(roomId) > participantCount / 2) {
@@ -302,5 +337,32 @@ public class GameService {
             roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
             startRound(channelId, roomId);
         }
+    }
+
+    @Transactional
+    public void toggleReady(String username, Long channelId, Long roomId) {
+        Map<String, Boolean> roomReadyStatus = readyStatusMap.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+
+        boolean currentReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(username, false));
+
+        boolean newReady = !currentReady;
+        log.debug("User {} ready status: {} -> {}", username, currentReady, newReady);
+
+        roomReadyStatus.put(username, !currentReady);
+
+        log.debug("Room {} ready status map: {}", roomId, roomReadyStatus);
+
+        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        Room room = roomService.findRoomById(roomId);
+        sendUserInfoToSubscriber(destination, room);
+    }
+
+//    Todo: 방에 입장 시 사용자 레디 상태를 false로 세팅, joinRoom 기능 개발 이후 점검 필요
+    @EventListener
+    public void handleUserJoinedEvent(UserJoinedEvent event) {
+        Map<String, Boolean> roomReadyStatus = readyStatusMap.computeIfAbsent(event.roomId(), k -> new ConcurrentHashMap<>());
+        roomReadyStatus.put(event.username(), false);
+
+        log.debug("User {} joined room {}. Ready status initialized to false.", event.username(), event.roomId());
     }
 }
