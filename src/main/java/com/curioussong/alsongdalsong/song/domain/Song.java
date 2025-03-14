@@ -34,13 +34,17 @@ public class Song {
     @Column(name = "year", nullable = false)
     private Integer year;
 
+    @Column(name = "play_time", nullable = false)
+    private Integer playTime;
+
     @Builder
-    public Song(String korTitle, String engTitle, String artist, String genre, String youtubeUrl, Integer year) {
+    public Song(String korTitle, String engTitle, String artist, String genre, String youtubeUrl, Integer year, Integer playTime) {
         this.korTitle = korTitle;
         this.engTitle = engTitle;
         this.artist = artist;
         this.genre = genre;
         this.youtubeUrl = youtubeUrl;
         this.year = year;
+        this.playTime = playTime;
     }
 }
