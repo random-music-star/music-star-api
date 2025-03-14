@@ -104,4 +104,8 @@ public class Room {
                 .status(this.status.name())
                 .build();
     }
+
+    public void updateStatus(RoomStatus status) {
+        this.status = status;
+    }
 }

@@ -23,6 +23,7 @@ import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
+import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
@@ -30,6 +31,7 @@ import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -50,6 +52,7 @@ public class GameService {
     private final GameRepository gameRepository;
     private final RoomRepository roomRepository;
     private final RoomGameService roomGameService;
+    private final ApplicationEventPublisher eventPublisher;
 
     private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
     private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
@@ -64,6 +67,7 @@ public class GameService {
 
 
     public void startGame(Long channelId, Long roomId) {
+        eventPublisher.publishEvent(new GameStatusEvent(roomId));
         initializeGameSetting(roomId);
         startRound(channelId, roomId);
     }
