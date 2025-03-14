@@ -171,7 +171,7 @@ public class GameService {
                     Thread.sleep(1000);
                 }
                 sendCountdown(destination, 0);
-                countSongPlayTime(destination, 10, roomId);
+                countSongPlayTime(destination, 30, roomId);
                 isAnswered.put(roomId, false);
                 sendQuizInfo(destination);
             } catch (InterruptedException e) {
