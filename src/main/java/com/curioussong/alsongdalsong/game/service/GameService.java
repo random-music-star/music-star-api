@@ -94,7 +94,7 @@ public class GameService {
 
         messagingTemplate.convertAndSend(destination, RoundResponseDTO.builder()
                         .type("roundInfo")
-                        .roundResponse(RoundResponse.builder()
+                        .response(RoundResponse.builder()
                                 .mode(gameMode)
                                 .round(roomAndRound.get(roomId))
                                 .build())

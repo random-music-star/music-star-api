@@ -9,5 +9,5 @@ import lombok.Setter;
 @Builder
 public class RoundResponseDTO {
     private String type;
-    private RoundResponse roundResponse;
+    private RoundResponse response;
 }
