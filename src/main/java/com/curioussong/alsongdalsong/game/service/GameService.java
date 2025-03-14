@@ -3,6 +3,8 @@ package com.curioussong.alsongdalsong.game.service;
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
+import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.next.NextResponseDTO;
@@ -25,6 +27,7 @@ import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
+import com.curioussong.alsongdalsong.room.domain.Room.RoomStatus;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
@@ -60,11 +63,16 @@ public class GameService {
     private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
     private Map<Long, Map<Integer, String>> roundAndSong = new HashMap<>(); // <roomId, <round, songTitle>> 쌍으로 저장p
     private Map<Long, Integer> skipCount = new HashMap<>();
+    private Map<Long, RoomStatus> roomStatus = new HashMap<>();
+    private Map<Long, Boolean> isAnswered = new HashMap<>(); // 방에서 정답을 맞추면 true 상태. 정답을 못맞추는 동안에는 false
 
     private ScheduledFuture<?> scheduledTask;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
 
     private final Map<Long, AtomicBoolean> roomStatusMap = new ConcurrentHashMap<>(); // 방별 진행 상태
+    private Map<Long, ScheduledExecutorService> roomConsonantHintTimerSchedulers = new ConcurrentHashMap<>(); // 방별 힌트 타이머 스케줄러
+    private Map<Long, ScheduledExecutorService> roomSingerHintTimerSchedulers = new ConcurrentHashMap<>(); // 방별 힌트 타이머 스케줄러
+    private Map<Long, ScheduledExecutorService> roomRoundTimerSchedulers = new ConcurrentHashMap<>(); // 방별 라운드 타이머 스케줄러
     private final Map<Long, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>(); // 방별 타이머 스케줄러
     private final Map<Long, Map<String, Boolean>> readyStatusMap = new ConcurrentHashMap<>();
 
@@ -99,9 +107,29 @@ public class GameService {
 
     public void startRound(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+
+        // 라운드가 20이면 종료
+        int nowRound = roomAndRound.get(roomId);
+        if (nowRound == 5) {
+            // 전체 게임 종료 시 바로 WAITING으로 변경
+//            setRoomStatusWAITING(roomId);
+
+            messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
+                            .type("gameEnd")
+                            .response(GameEndResponse.builder()
+                                    .build())
+                    .build());
+            return;
+        }
+
+        roomConsonantHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
+        roomSingerHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
+        roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
+
+
         sendRoundInfo(destination, roomId);
         skipCount.put(roomId, 0);
-        startCountdown(destination);
+        startCountdown(destination, roomId);
     }
 
     private void initializeGameSetting(Long roomId) {
@@ -114,6 +142,7 @@ public class GameService {
         roomAndRound.put(roomId, 1);
         roundAndMode.put(roomId, roundMap);
         roundAndSong.put(roomId, songMap);
+        roomStatus.put(roomId, RoomStatus.IN_PROGRESS);
     }
 
     public void sendRoundInfo(String destination, Long roomId) {
@@ -134,7 +163,7 @@ public class GameService {
                 .build());
     }
 
-    public void startCountdown(String destination) {
+    public void startCountdown(String destination, Long roomId) {
         new Thread(() -> {
             try {
                 for (int i = 3; i > 0; i--) {
@@ -142,7 +171,8 @@ public class GameService {
                     Thread.sleep(1000);
                 }
                 sendCountdown(destination, 0);
-                countSongPlayTime(destination, 30);
+                countSongPlayTime(destination, 10, roomId);
+                isAnswered.put(roomId, false);
                 sendQuizInfo(destination);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -150,28 +180,21 @@ public class GameService {
         }).start();
     }
 
-    private void countSongPlayTime(String destination, int waitTimeInSeconds) {
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-
-        scheduler.schedule(() -> {
-            sendConsonantHint(destination);
-        }, 10, TimeUnit.SECONDS);
-
-        scheduler.schedule(() -> {
-            sendSingerHint(destination);
-        }, 20, TimeUnit.SECONDS);
-
-        scheduler.schedule(() -> {
-            triggerEndEvent(destination); // 대기 시간 후 실행할 메서드
-            scheduler.shutdown();
-        }, waitTimeInSeconds, TimeUnit.SECONDS);
+    private void countSongPlayTime(String destination, int waitTimeInSeconds, Long roomId) {
+        roomConsonantHintTimerSchedulers.get(roomId).schedule(() -> sendConsonantHint(destination), 10, TimeUnit.SECONDS);
+        roomSingerHintTimerSchedulers.get(roomId).schedule(() -> sendSingerHint(destination), 20, TimeUnit.SECONDS);
+        roomRoundTimerSchedulers.get(roomId).schedule(() -> triggerEndEvent(destination), waitTimeInSeconds, TimeUnit.SECONDS);
     }
 
-    public void cancelTimerAndTriggerImmediately(String destination) {
-        if (scheduledTask != null && !scheduledTask.isDone()) {
-            scheduledTask.cancel(false);
-            triggerEndEvent(destination);
-        }
+    public void cancelHintTimer(Long roomId) {
+        roomConsonantHintTimerSchedulers.get(roomId).shutdownNow();
+        roomSingerHintTimerSchedulers.get(roomId).shutdownNow();
+
+    }
+
+    public void cancelRoundTimerAndTriggerImmediately(String destination, Long roomId) {
+        roomRoundTimerSchedulers.get(roomId).shutdownNow();
+        triggerEndEvent(destination);
     }
 
     private void triggerEndEvent(String destination) {
@@ -186,6 +209,7 @@ public class GameService {
             Long channelId = Long.parseLong(matcher.group(1)); // 첫 번째 캡처 그룹 -> channelId
             Long roomId = Long.parseLong(matcher.group(2)); // 두 번째 캡처 그룹 -> roomId
 
+            roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
             scheduler.schedule(() -> startRound(channelId, roomId), 5, TimeUnit.SECONDS);
         }
     }
@@ -304,7 +328,14 @@ public class GameService {
     }
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
+        // 이미 정답을 맞춘 라운드이면 통과
+        if (isAnswered.get(roomId)) {
+            return;
+        }
+
+        isAnswered.put(roomId, true);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        cancelHintTimer(roomId);
         // 추후 DB에서 노래 문제 리스트를 Map
         messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()
                         .type("gameResult")
@@ -331,7 +362,8 @@ public class GameService {
         if (skipCount.get(roomId) > participantCount / 2) {
             log.info("Skip count exceeded threshold, moving to next round.");
             String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
-            cancelTimerAndTriggerImmediately(destination);
+            cancelHintTimer(roomId);
+            cancelRoundTimerAndTriggerImmediately(destination, roomId);
 
             // 다음 라운드
             roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
@@ -364,5 +396,9 @@ public class GameService {
         roomReadyStatus.put(event.username(), false);
 
         log.debug("User {} joined room {}. Ready status initialized to false.", event.username(), event.roomId());
+    }
+
+    public void setRoomStatusWAITING(Long roomId) {
+        roomStatus.put(roomId, RoomStatus.WAITING);
     }
 }

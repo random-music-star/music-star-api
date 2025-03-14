@@ -41,12 +41,13 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
             Pattern pattern = Pattern.compile(".*/(\\d+)$");
             Matcher matcher = pattern.matcher(destination);
 
-//            if (matcher.find()) { //
-//                Long roomId = Long.valueOf(matcher.group(1)); // 마지막 숫자 추출
+            if (matcher.find()) { //
+                Long roomId = Long.valueOf(matcher.group(1)); // 마지막 숫자 추출
+                // 방 입장 시 WAITING 상태로 설정
+                gameService.setRoomStatusWAITING(roomId);
 //                roomService.joinRoom(roomId, username);
 //                log.info("Extracted Room ID: {}", roomId);
-//            }
-
+            }
             sendRoomInfoAndUserInfoToSubscriber(destination); // 방 입장 시, 해당 방에 입장한 사용자들에게 방 정보와 사용자 목록을 내려줌.
         }
     }
