@@ -360,8 +360,8 @@ public class GameService {
         roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
     }
 
+    @Transactional
     public void incrementSkipCount(Long roomId, Long channelId, String username) {
-
         Long memberId = memberService.getMemberByToken(username).getId();
 
         // 이미 스킵을 한 사용자라면
