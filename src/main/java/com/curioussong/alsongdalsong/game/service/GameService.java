@@ -215,6 +215,8 @@ public class GameService {
                 .type("next")
                 .build());
 
+        log.info("EndEvent 트리거 활성화");
+
         Pattern pattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
         Matcher matcher = pattern.matcher(destination);
 
@@ -222,8 +224,12 @@ public class GameService {
             Long channelId = Long.parseLong(matcher.group(1)); // 첫 번째 캡처 그룹 -> channelId
             Long roomId = Long.parseLong(matcher.group(2)); // 두 번째 캡처 그룹 -> roomId
 
+            log.info("channelId: {}, roomdId : {}", destination, roomId);
+
             roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
             scheduler.schedule(() -> startRound(channelId, roomId), 5, TimeUnit.SECONDS);
+        } else {
+            log.info("Pattern did not match destination: {}", destination);
         }
     }
 
