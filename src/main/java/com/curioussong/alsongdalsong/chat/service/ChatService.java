@@ -33,7 +33,7 @@ public class ChatService {
 
         // Skip 요청 처리
         if (".".equals(chatRequest.getRequest().getMessage())) {
-            gameService.incrementSkipCount(roomId, channelId);
+            gameService.incrementSkipCount(roomId, channelId, chatRequest.getRequest().getSender());
         }
 
         return ChatResponse.builder()

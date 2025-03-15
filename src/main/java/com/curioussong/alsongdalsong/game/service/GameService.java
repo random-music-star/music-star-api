@@ -16,6 +16,8 @@ import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.round.RoundResponse;
 import com.curioussong.alsongdalsong.game.dto.round.RoundResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.skip.SkipResponse;
+import com.curioussong.alsongdalsong.game.dto.skip.SkipResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.timer.Response;
 import com.curioussong.alsongdalsong.game.dto.timer.TimerResponse;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
@@ -36,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
+import org.springframework.data.util.Pair;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +70,7 @@ public class GameService {
     private Map<Long, Map<Integer, String>> roundAndSong = new HashMap<>(); // <roomId, <round, songTitle>> 쌍으로 저장p
     private Map<Long, Integer> skipCount = new HashMap<>();
     private Map<Long, Boolean> isAnswered = new HashMap<>(); // 방에서 정답을 맞추면 true 상태. 정답을 못맞추는 동안에는 false
+    private Map<Pair<Long, Long>, Boolean> isSkipped = new HashMap<>(); // <<roomId, memberId>, false>> 로 저장
 
     private ScheduledFuture<?> scheduledTask;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -130,6 +134,10 @@ public class GameService {
         roomSingerHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
         roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
 
+        // skip 상태 초기화
+        for (Long memberId : room.getMemberIds()) {
+            isSkipped.put(Pair.of(roomId, memberId), false);
+        }
 
         sendRoundInfo(destination, roomId);
         skipCount.put(roomId, 0);
@@ -352,8 +360,20 @@ public class GameService {
         roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
     }
 
-    public void incrementSkipCount(Long roomId, Long channelId) {
+    public void incrementSkipCount(Long roomId, Long channelId, String username) {
+
+        Long memberId = memberService.getMemberByToken(username).getId();
+
+        // 이미 스킵을 한 사용자라면
+        if (isSkipped.get(Pair.of(roomId, memberId))) {
+            return;
+        }
+
+        // 스킵 상태 변환
+        isSkipped.put(Pair.of(roomId, memberId), true);
+
         skipCount.put(roomId, skipCount.getOrDefault(roomId, 0) + 1);
+        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
         int participantCount = roomRepository.findById(roomId)
                 .map(room -> room.getMemberIds().size())
@@ -361,10 +381,18 @@ public class GameService {
 
         log.debug("Room {} skip count: {}/{}", roomId, skipCount.get(roomId), participantCount);
 
+        // 스킵 정보 전송
+        messagingTemplate.convertAndSend(destination, SkipResponseDTO.builder()
+                .type("skip")
+                .response(SkipResponse.builder()
+                        .skipPerson(skipCount.get(roomId))
+                        .build())
+                .build());
+
+
         // 참가자 절반 초과 시 즉시 다음 라운드 시작
         if (skipCount.get(roomId) > participantCount / 2) {
             log.info("Skip count exceeded threshold, moving to next round.");
-            String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
             cancelHintTimer(roomId);
             cancelRoundTimerAndTriggerImmediately(destination, roomId);
 
