@@ -136,13 +136,17 @@ public class GameService {
         roomSingerHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
         roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
 
+        log.info("skip 상태 초기화 시작");
         // skip 상태 초기화
         for (Long memberId : room.getMemberIds()) {
             isSkipped.put(Pair.of(roomId, memberId), false);
         }
 
+        log.info("{} 번째 라운드 정보 전송", roomAndRound.get(roomId));
         sendRoundInfo(destination, roomId);
         skipCount.put(roomId, 0);
+
+        log.info("카운트 다운 시작");
         startCountdown(destination, roomId);
     }
 
@@ -253,6 +257,7 @@ public class GameService {
     }
 
     private void sendQuizInfo(String destination) {
+        log.info("퀴즈 정보 전송");
         messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
                         .type("quizInfo")
                         .response(QuizResponse.builder()
