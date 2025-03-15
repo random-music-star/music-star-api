@@ -112,6 +112,7 @@ public class GameService {
         return true;
     }
 
+    @Transactional
     public void startRound(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
@@ -137,6 +138,7 @@ public class GameService {
         roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
 
         log.info("skip 상태 초기화 시작");
+        log.info(room.getMemberIds().toString());
         // skip 상태 초기화
         for (Long memberId : room.getMemberIds()) {
             isSkipped.put(Pair.of(roomId, memberId), false);
