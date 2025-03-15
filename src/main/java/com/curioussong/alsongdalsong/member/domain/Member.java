@@ -27,7 +27,7 @@ public class Member {
     @Column(name="type", nullable=false)
     private MemberType type;
 
-    @ManyToOne(fetch = FetchType.EAGER)
+    @ManyToOne
     private Room room;
 
     public void setRoom(Room room) {
