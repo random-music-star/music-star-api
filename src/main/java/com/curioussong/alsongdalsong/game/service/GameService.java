@@ -115,6 +115,8 @@ public class GameService {
     public void startRound(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
+        log.info("Round : {} 진행중입니다.", roomAndRound.get(roomId));
+
         // 최대 라운드 도달 시 종료
         Room room = roomService.findRoomById(roomId);
         int nowRound = roomAndRound.get(roomId);
@@ -357,7 +359,6 @@ public class GameService {
                                 .score(1)
                                 .build())
                 .build());
-        roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
     }
 
     @Transactional
@@ -395,10 +396,6 @@ public class GameService {
             log.info("Skip count exceeded threshold, moving to next round.");
             cancelHintTimer(roomId);
             cancelRoundTimerAndTriggerImmediately(destination, roomId);
-
-            // 다음 라운드
-            roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
-            startRound(channelId, roomId);
         }
     }
 
