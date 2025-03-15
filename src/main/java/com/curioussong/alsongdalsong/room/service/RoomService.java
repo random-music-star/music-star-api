@@ -43,7 +43,7 @@ public class RoomService {
                 .format(Room.RoomFormat.valueOf(request.getFormat()))
                 .build();
 
-        room.getMemberIds().add(member.getId());
+        room.addMember(member);
 
         roomRepository.save(room);
 
@@ -62,7 +62,7 @@ public class RoomService {
         Member member = memberRepository.findByUsername(username);
 
         // 방에 이미 최대인원이 있는지 나중에 검증 필요
-        room.getMemberIds().add(member.getId());
+        room.getMembers().add(member);
 
         eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), username));
     }

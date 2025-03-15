@@ -56,13 +56,8 @@ public class Room {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @ElementCollection
-    @CollectionTable(
-            name = "room_member",
-            joinColumns = @JoinColumn(name = "room_id")
-    )
-    @Column(name = "member_id")
-    private List<Long> memberIds = new ArrayList<>();
+    @OneToMany(mappedBy = "room")
+    private List<Member> members = new ArrayList<>();
 
     public enum RoomStatus {
         WAITING, IN_PROGRESS, FINISHED
@@ -97,7 +92,7 @@ public class Room {
                 .hostName(this.host.getUsername())
                 .format(this.format.name())
                 .maxPlayer(this.maxPlayer)
-                .currentPlayers(this.memberIds.size())
+                .currentPlayers(this.members.size())
                 .maxGameRound(this.maxGameRound)
                 .playTime(this.playTime)
                 .hasPassword(this.password != null && !this.password.isEmpty())
@@ -107,5 +102,10 @@ public class Room {
 
     public void updateStatus(RoomStatus status) {
         this.status = status;
+    }
+
+    public void addMember(Member member) {
+        members.add(member);
+        member.setRoom(this);
     }
 }

@@ -97,11 +97,10 @@ public class GameService {
 
     private boolean areAllPlayersReady(Long roomId) {
         Room room = roomService.findRoomById(roomId);
-        List<Long> memberIds = room.getMemberIds();
+        List<Member> members = room.getMembers();
         Map<String, Boolean> roomReadyStatus = readyStatusMap.getOrDefault(roomId, new ConcurrentHashMap<>());
 
-        for (Long memberId : memberIds) {
-            Member member = memberService.getMemberById(memberId);
+        for (Member member : members) {;
             boolean isReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(member.getUsername(), false));
 
             if (!isReady) {
@@ -112,7 +111,6 @@ public class GameService {
         return true;
     }
 
-    @Transactional
     public void startRound(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
@@ -139,16 +137,16 @@ public class GameService {
 
         log.info("skip 상태 초기화 시작");
 
-        if (room.getMemberIds() == null) {
-            log.info("room.getMemberIds() is null!");
+        if (room.getMembers() == null) {
+            log.info("room.getMembers() is null!");
         } else {
-            log.info("Member IDs: {}", room.getMemberIds());
+            log.info("Member IDs: {}", room.getMembers());
             System.out.flush(); // 로그 강제 출력
         }
 
         // skip 상태 초기화
-        for (Long memberId : room.getMemberIds()) {
-            isSkipped.put(Pair.of(roomId, memberId), false);
+        for (Member member : room.getMembers()) {
+            isSkipped.put(Pair.of(roomId, member.getId()), false);
         }
 
         log.info("{} 번째 라운드 정보 전송", roomAndRound.get(roomId));
@@ -321,7 +319,8 @@ public class GameService {
     }
 
     private void sendUserInfoToSubscriber(String destination, Room room) {
-        List<Long> memberIds = room.getMemberIds();
+        List<Long> memberIds = room.getMembers().stream()
+                .map(Member::getId).toList();
         List<UserInfo> userInfoList = new ArrayList<>();
 
         boolean allReady = true;
@@ -397,7 +396,7 @@ public class GameService {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
         int participantCount = roomRepository.findById(roomId)
-                .map(room -> room.getMemberIds().size())
+                .map(room -> room.getMembers().size())
                 .orElse(0);
 
         log.debug("Room {} skip count: {}/{}", roomId, skipCount.get(roomId), participantCount);
