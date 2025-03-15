@@ -138,7 +138,14 @@ public class GameService {
         roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
 
         log.info("skip 상태 초기화 시작");
-        log.info(room.getMemberIds().toString());
+
+        if (room.getMemberIds() == null) {
+            log.info("room.getMemberIds() is null!");
+        } else {
+            log.info("Member IDs: {}", room.getMemberIds());
+            System.out.flush(); // 로그 강제 출력
+        }
+
         // skip 상태 초기화
         for (Long memberId : room.getMemberIds()) {
             isSkipped.put(Pair.of(roomId, memberId), false);
