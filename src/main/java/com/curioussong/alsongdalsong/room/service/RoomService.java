@@ -58,15 +58,14 @@ public class RoomService {
     }
 
     @Transactional
-    public void joinRoom(Long roomId, String username) {
+    public void joinRoom(Long roomId, String userName) {
         Room room = roomRepository.findById(roomId).orElse(null);
 
-        Member member = memberRepository.findByUsername(username);
+        Member member = memberRepository.findByUsername(userName);
 
-        // 방에 이미 최대인원이 있는지 나중에 검증 필요
         room.getMembers().add(member);
 
-        eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), username));
+        eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), userName));
     }
 
     @Transactional
@@ -103,5 +102,15 @@ public class RoomService {
         Page<Room> roomPage = roomRepository.findByStatusInOrderByUpdatedAtDesc(activeStatuses, pageable);
 
         return roomPage.map(Room::toDto);
+    }
+
+    public boolean isRoomFull(Long roomId) {
+        Room room = roomRepository.findById(roomId).orElse(null);
+        return room.getMembers().size() == room.getMaxPlayer();
+    }
+
+    public boolean isRoomInProgress(Long roomId) {
+        Room room = roomRepository.findById(roomId).orElse(null);
+        return room.getStatus() == Room.RoomStatus.IN_PROGRESS;
     }
 }

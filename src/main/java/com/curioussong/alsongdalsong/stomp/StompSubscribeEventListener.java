@@ -4,6 +4,8 @@ import com.curioussong.alsongdalsong.game.dto.test.TestResponse;
 import com.curioussong.alsongdalsong.game.dto.test.TestResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
 import com.curioussong.alsongdalsong.game.service.GameService;
+import com.curioussong.alsongdalsong.room.dto.RefuseEnterResponse;
+import com.curioussong.alsongdalsong.room.dto.RefuseEnterResponseDTO;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
@@ -41,25 +43,30 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
         if (destination != null && sessionId != null && destination.matches("^/topic/channel/\\d+/room/\\d+$")) {
             String userName = "";
-            if (accessor.getNativeHeader("Authorization") != null &&
-                    !accessor.getNativeHeader("Authorization").isEmpty()) {
+            if (accessor.getNativeHeader("Authorization") != null && !accessor.getNativeHeader("Authorization").isEmpty()) {
                 userName = accessor.getNativeHeader("Authorization").get(0);
             }
             log.info("username {}", userName);
             log.info("accessor {}", accessor);
-            messagingTemplate.convertAndSend(destination, TestResponseDTO.builder()
-                            .type("headerTest")
-                            .response(TestResponse.builder()
-                                    .userName(userName)
-                                    .build())
-                    .build());
+
             // 정규식: 마지막 숫자 추출
             Pattern pattern = Pattern.compile(".*/(\\d+)$");
             Matcher matcher = pattern.matcher(destination);
 
             if (matcher.find()) { //
                 Long roomId = Long.valueOf(matcher.group(1)); // 마지막 숫자 추출
-//                roomService.joinRoom(roomId, username);
+
+                // 방이 가득 찼거나, 게임 진행 중이면 참가 불가.
+                if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId)) {
+                    messagingTemplate.convertAndSend(destination, RefuseEnterResponseDTO.builder()
+                                    .type("refuseEnter")
+                                    .response(RefuseEnterResponse.builder()
+                                            .refusedUser(userName)
+                                            .build())
+                            .build());
+                    return;
+                }
+                roomService.joinRoom(roomId, userName);
 //                log.info("Extracted Room ID: {}", roomId);
             }
             sendRoomInfoAndUserInfoToSubscriber(destination); // 방 입장 시, 해당 방에 입장한 사용자들에게 방 정보와 사용자 목록을 내려줌.
