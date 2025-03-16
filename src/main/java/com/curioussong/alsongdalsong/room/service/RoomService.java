@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.room.service;
 
+import com.curioussong.alsongdalsong.game.event.YearSelectionEvent;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -48,6 +49,7 @@ public class RoomService {
         roomRepository.save(room);
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
+        eventPublisher.publishEvent(new YearSelectionEvent(room.getId(), request.getSelectedYears()));
 
 //      Todo room 생성시 이벤트 등록하고 추후 game 서비스에서 받아 엔티티 형성
         return CreateResponse.builder()
@@ -80,6 +82,7 @@ public class RoomService {
         }
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
+        eventPublisher.publishEvent(new YearSelectionEvent(room.getId(), request.getSelectedYears()));
         room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
     }
 

@@ -13,4 +13,5 @@ public class UpdateRequest {
     private String format;
     private String password;
     private List<String> gameModes;
+    private List<Integer> selectedYears;
 }

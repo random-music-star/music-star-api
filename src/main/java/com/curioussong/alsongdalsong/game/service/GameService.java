@@ -34,6 +34,8 @@ import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
+import com.curioussong.alsongdalsong.song.domain.Song;
+import com.curioussong.alsongdalsong.song.service.SongService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -64,13 +66,15 @@ public class GameService {
     private final RoomRepository roomRepository;
     private final RoomGameService roomGameService;
     private final ApplicationEventPublisher eventPublisher;
+    private final SongService songService;
 
     private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
     private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
-    private Map<Long, Map<Integer, String>> roundAndSong = new HashMap<>(); // <roomId, <round, songTitle>> 쌍으로 저장p
+    private Map<Long, Map<Integer, Song>> roundAndSong = new HashMap<>(); // <roomId, <round, Song>> 쌍으로 저장p
     private Map<Long, Integer> skipCount = new HashMap<>();
     private Map<Long, Boolean> isAnswered = new HashMap<>(); // 방에서 정답을 맞추면 true 상태. 정답을 못맞추는 동안에는 false
     private Map<Pair<Long, Long>, Boolean> isSkipped = new HashMap<>(); // <<roomId, memberId>, false>> 로 저장
+    private Map<Long, List<Integer>> roomAndSelectedYears = new HashMap<>();
 
     private ScheduledFuture<?> scheduledTask;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -158,11 +162,13 @@ public class GameService {
     }
 
     private void initializeGameSetting(Long roomId) {
+        Room room = roomService.findRoomById(roomId);
         Map<Integer, GameMode> roundMap = new HashMap<>();
-        Map<Integer, String> songMap = new HashMap<>();
-        for (int i=1;i<=20;i++) { // 현재는 한 게임당 20라운드 하드코딩
+        Map<Integer, Song> songMap = new HashMap<>();
+        List<Song> selectedSongs = songService.getRandomSongByYear(roomAndSelectedYears.get(roomId), room.getMaxGameRound());
+        for (int i=1;i<=room.getMaxGameRound();i++) { // 현재는 한 게임당 20라운드 하드코딩
             roundMap.put(i,GameMode.FULL);
-            songMap.put(i, "톰보이");
+            songMap.put(i, selectedSongs.get(i-1));
         }
         roomAndRound.put(roomId, 1);
         roundAndMode.put(roomId, roundMap);
@@ -195,9 +201,9 @@ public class GameService {
                     Thread.sleep(1000);
                 }
                 sendCountdown(destination, 0);
-                countSongPlayTime(destination, 30, roomId);
+                countSongPlayTime(destination, roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getPlayTime(), roomId);
                 isAnswered.put(roomId, false);
-                sendQuizInfo(destination);
+                sendQuizInfo(destination, roomId);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -263,12 +269,12 @@ public class GameService {
                 .build());
     }
 
-    private void sendQuizInfo(String destination) {
+    private void sendQuizInfo(String destination, Long roomId) {
         log.info("퀴즈 정보 전송");
         messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
                         .type("quizInfo")
                         .response(QuizResponse.builder()
-                                .songUrl("https://www.youtube.com/watch?v=0wezH4MAncY")
+                                .songUrl(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getYoutubeUrl())
                                 .build())
                 .build());
     }
@@ -296,12 +302,6 @@ public class GameService {
         // 임시 하드코딩
         List<GameMode> gameModes = new ArrayList<>();
         gameModes.add(GameMode.FULL);
-        List<Integer> selectedYear = new ArrayList<>();
-        selectedYear.add(2020);
-        selectedYear.add(2021);
-        selectedYear.add(2022);
-        selectedYear.add(2023);
-        selectedYear.add(2024);
 
         messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
                 .type("roomInfo")
@@ -313,7 +313,7 @@ public class GameService {
                         .format(room.getFormat())
                         .status(room.getStatus())
                         .mode(gameModes)
-                        .selectedYear(selectedYear)
+                        .selectedYear(roomAndSelectedYears.get(room.getId()))
                         .build())
                 .build());
     }
@@ -355,7 +355,7 @@ public class GameService {
     public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
         String message = chatRequest.getRequest().getMessage();
         int nowRound = roomAndRound.get(roomId);
-        String nowAnswer = roundAndSong.get(roomId).get(nowRound);
+        String nowAnswer = roundAndSong.get(roomId).get(nowRound).getKorTitle();
         return message.equals(nowAnswer);
     }
 
@@ -446,4 +446,7 @@ public class GameService {
         log.debug("User {} joined room {}. Ready status initialized to false.", event.username(), event.roomId());
     }
 
+    public void updateSongYears(Long roomId, List<Integer> selectedYears) {
+        roomAndSelectedYears.put(roomId, selectedYears);
+    }
 }

@@ -13,4 +13,5 @@ public class CreateRequest {
     private String password;
     private String format;
     private List<String> gameModes;
+    private List<Integer> selectedYears;
 }
