@@ -36,6 +36,7 @@ import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
+import com.curioussong.alsongdalsong.util.KoreanConsonantExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -211,8 +212,8 @@ public class GameService {
     }
 
     private void countSongPlayTime(String destination, int waitTimeInSeconds, Long roomId) {
-        roomConsonantHintTimerSchedulers.get(roomId).schedule(() -> sendConsonantHint(destination), CONSONANT_HINT_TIME, TimeUnit.SECONDS);
-        roomSingerHintTimerSchedulers.get(roomId).schedule(() -> sendSingerHint(destination), SINGER_HINT_TIME, TimeUnit.SECONDS);
+        roomConsonantHintTimerSchedulers.get(roomId).schedule(() -> sendConsonantHint(destination, roomId), CONSONANT_HINT_TIME, TimeUnit.SECONDS);
+        roomSingerHintTimerSchedulers.get(roomId).schedule(() -> sendSingerHint(destination, roomId), SINGER_HINT_TIME, TimeUnit.SECONDS);
         roomRoundTimerSchedulers.get(roomId).schedule(() -> triggerEndEvent(destination), waitTimeInSeconds, TimeUnit.SECONDS);
     }
 
@@ -250,21 +251,23 @@ public class GameService {
         }
     }
 
-    private void sendConsonantHint(String destination) {
+    private void sendConsonantHint(String destination, Long roomId) {
+        String consonants = KoreanConsonantExtractor.extractConsonants(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getKorTitle());
         messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
                         .type("hint")
                         .response(HintResponse.builder()
-                                .title("ㅌㅂㅇ")
+                                .title(consonants)
                                 .build())
                 .build());
     }
 
-    private void sendSingerHint(String destination) {
+    private void sendSingerHint(String destination, Long roomId) {
+        String consonants = KoreanConsonantExtractor.extractConsonants(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getKorTitle());
         messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
                 .type("hint")
                 .response(HintResponse.builder()
-                        .title("ㅌㅂㅇ")
-                        .singer("(여자)아이들")
+                        .title(consonants)
+                        .singer(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getArtist())
                         .build())
                 .build());
     }
