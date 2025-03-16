@@ -356,10 +356,16 @@ public class GameService {
     }
 
     public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
-        String message = chatRequest.getRequest().getMessage();
         int nowRound = roomAndRound.get(roomId);
-        String nowAnswer = roundAndSong.get(roomId).get(nowRound).getKorTitle();
-        return message.equals(nowAnswer);
+        // 한글/영어 이외의 문자가 나오면 자름. (ex. 러브일일구(러브119) -> 러브일일구)
+        // 공백 제거
+        String koreanAnswer = roundAndSong.get(roomId).get(nowRound).getKorTitle().replaceAll("[^가-힣].*", "").replaceAll("\\s+", "");
+        // 영어는 대문자로 치환
+        String englishAnswer = roundAndSong.get(roomId).get(nowRound).getEngTitle().replaceAll("[^a-zA-Z].*", "").replaceAll("\\s+", "").toUpperCase();
+
+        // 채팅의 모든 공백 제거 및 대문자 치환
+        String message = chatRequest.getRequest().getMessage().replaceAll("\\s+", "").toUpperCase();
+        return message.equals(koreanAnswer) || message.equals(englishAnswer);
     }
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
@@ -371,13 +377,21 @@ public class GameService {
         isAnswered.put(roomId, true);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         cancelHintTimer(roomId);
-        // 추후 DB에서 노래 문제 리스트를 Map
+
+        String koreanTitle = roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getKorTitle();
+        String englishTitle = roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getEngTitle();
+        StringBuilder title = new StringBuilder();
+        if (englishTitle != null) {
+            title.append(koreanTitle).append("(").append(englishTitle).append(")");
+        } else {
+            title.append(koreanTitle);
+        }
         messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()
                         .type("gameResult")
                         .response(ResultResponse.builder()
                                 .winner(userName)
-                                .songTitle("톰보이")
-                                .singer("여자아이들")
+                                .songTitle(title.toString())
+                                .singer(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getArtist())
                                 .score(1)
                                 .build())
                 .build());
