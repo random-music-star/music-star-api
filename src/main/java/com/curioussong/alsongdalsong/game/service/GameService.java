@@ -356,16 +356,22 @@ public class GameService {
     }
 
     public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
+        // 채팅의 모든 공백 제거 및 대문자 치환
+        String message = chatRequest.getRequest().getMessage().replaceAll("\\s+", "").toUpperCase();
+
         int nowRound = roomAndRound.get(roomId);
         // 한글/영어 이외의 문자가 나오면 자름. (ex. 러브일일구(러브119) -> 러브일일구)
         // 공백 제거
         String koreanAnswer = roundAndSong.get(roomId).get(nowRound).getKorTitle().replaceAll("[^가-힣].*", "").replaceAll("\\s+", "");
         // 영어는 대문자로 치환
-        String englishAnswer = roundAndSong.get(roomId).get(nowRound).getEngTitle().replaceAll("[^a-zA-Z].*", "").replaceAll("\\s+", "").toUpperCase();
+        String englishAnswer = roundAndSong.get(roomId).get(nowRound).getEngTitle();
 
-        // 채팅의 모든 공백 제거 및 대문자 치환
-        String message = chatRequest.getRequest().getMessage().replaceAll("\\s+", "").toUpperCase();
-        return message.equals(koreanAnswer) || message.equals(englishAnswer);
+        // 영어 제목이 있는 노래인 경우 한글 제목과 영어 제목 둘 다 정답 처리
+        if (englishAnswer != null) {
+            englishAnswer = englishAnswer.replaceAll("[^a-zA-Z].*", "").replaceAll("\\s+", "").toUpperCase();
+            return message.equals(koreanAnswer) || message.equals(englishAnswer);
+        }
+        return message.equals(koreanAnswer);
     }
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
