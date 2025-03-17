@@ -19,4 +19,5 @@ public class RoomInfoResponse {
     private RoomStatus status;
     private List<GameMode> mode;
     private List<Integer> selectedYear;
+    private Boolean hasPassword;
 }

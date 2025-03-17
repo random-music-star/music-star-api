@@ -312,6 +312,7 @@ public class GameService {
                         .roomTitle(room.getTitle())
                         .maxPlayer(room.getMaxPlayer())
                         .maxGameRound(room.getMaxGameRound())
+                        .hasPassword(room.getPassword()!=null&&!room.getPassword().isEmpty())
                         .format(room.getFormat())
                         .status(room.getStatus())
                         .mode(gameModes)
