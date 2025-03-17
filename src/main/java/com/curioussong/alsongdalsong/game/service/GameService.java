@@ -310,7 +310,6 @@ public class GameService {
                 .type("roomInfo")
                 .response(RoomInfoResponse.builder()
                         .roomTitle(room.getTitle())
-                        .password(room.getPassword())
                         .maxPlayer(room.getMaxPlayer())
                         .maxGameRound(room.getMaxGameRound())
                         .format(room.getFormat())

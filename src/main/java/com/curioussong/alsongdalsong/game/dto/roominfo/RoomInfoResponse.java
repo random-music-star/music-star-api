@@ -13,7 +13,6 @@ import java.util.List;
 @Builder
 public class RoomInfoResponse {
     private String roomTitle;
-    private String password;
     private Integer maxPlayer;
     private Integer maxGameRound;
     private RoomFormat format;
