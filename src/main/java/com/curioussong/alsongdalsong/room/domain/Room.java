@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.room.domain;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
+import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -59,6 +60,9 @@ public class Room {
     @OneToMany(mappedBy = "room", fetch = FetchType.EAGER)
     private List<Member> members = new ArrayList<>();
 
+    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RoomGame> roomGames = new ArrayList<>();
+
     public enum RoomStatus {
         WAITING, IN_PROGRESS, FINISHED
     }
@@ -107,5 +111,10 @@ public class Room {
     public void addMember(Member member) {
         members.add(member);
         member.setRoom(this);
+    }
+
+    public void addRoomGame(RoomGame roomGame) {
+        roomGames.add(roomGame);
+        roomGame.setRoom(this); // 양방향 관계 유지
     }
 }

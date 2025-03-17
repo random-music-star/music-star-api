@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.room.dto;
 
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,6 +13,6 @@ public class CreateRequest {
     private String title;
     private String password;
     private String format;
-    private List<String> gameModes;
+    private List<GameMode> gameModes;
     private List<Integer> selectedYears;
 }

@@ -1,6 +1,6 @@
 package com.curioussong.alsongdalsong.game.dto.round;
 
-import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;

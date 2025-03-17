@@ -1,6 +1,8 @@
 package com.curioussong.alsongdalsong.room.service;
 
+import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.event.YearSelectionEvent;
+import com.curioussong.alsongdalsong.game.service.GameService;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -11,6 +13,7 @@ import com.curioussong.alsongdalsong.room.dto.UpdateRequest;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
+import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,6 +37,7 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MemberRepository memberRepository;
+    private final GameService gameService;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -45,6 +49,22 @@ public class RoomService {
                 .build();
 
         room.addMember(member);
+
+        // GameMode 리스트를 기반으로 해당 Game 검색
+        List<Game> games = request.getGameModes().stream()
+                .map(gameService::getGameByMode)
+                .toList();
+
+        // roomgame과 연관관계 설정
+        for (Game game : games) {
+            RoomGame roomgame = RoomGame.builder()
+                    .room(room)
+                    .game(game)
+                    .build();
+            roomgame.setGame(game);
+            roomgame.setRoom(room);
+            room.addRoomGame(roomgame);
+        }
 
         roomRepository.save(room);
 
@@ -88,7 +108,7 @@ public class RoomService {
 
     @Transactional
     public Room findRoomById(Long id) {
-        return roomRepository.findById(id).orElse(null);
+        return roomRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
     }
 
     @Transactional(readOnly=true)

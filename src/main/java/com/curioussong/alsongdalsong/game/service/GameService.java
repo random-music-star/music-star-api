@@ -2,7 +2,7 @@ package com.curioussong.alsongdalsong.game.service;
 
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.domain.Game;
-import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
@@ -31,12 +31,12 @@ import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.domain.Room.RoomStatus;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
-import com.curioussong.alsongdalsong.room.service.RoomService;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
 import com.curioussong.alsongdalsong.util.KoreanConsonantExtractor;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -57,11 +57,10 @@ import java.util.regex.Pattern;
 @Slf4j
 public class GameService {
 
-    private final Integer CONSONANT_HINT_TIME = 10;
-    private final Integer SINGER_HINT_TIME = 15;
+    private final Integer CONSONANT_HINT_TIME = 15;
+    private final Integer SINGER_HINT_TIME = 30;
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final RoomService roomService;
     private final MemberService memberService;
     private final GameRepository gameRepository;
     private final RoomRepository roomRepository;
@@ -87,11 +86,12 @@ public class GameService {
 
     @Transactional
     public void startGame(Long channelId, Long roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         if (!areAllPlayersReady(roomId)) {
             return;
         }
         eventPublisher.publishEvent(new GameStatusEvent(roomId, RoomStatus.IN_PROGRESS));
-        Room room = roomRepository.findById(roomId).orElse(null);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         sendRoomInfoToSubscriber(destination, room);
         initializeGameSetting(roomId);
@@ -101,7 +101,8 @@ public class GameService {
     }
 
     private boolean areAllPlayersReady(Long roomId) {
-        Room room = roomService.findRoomById(roomId);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         List<Member> members = room.getMembers();
         Map<String, Boolean> roomReadyStatus = readyStatusMap.getOrDefault(roomId, new ConcurrentHashMap<>());
 
@@ -122,7 +123,8 @@ public class GameService {
         log.info("Round : {} 진행중입니다.", roomAndRound.get(roomId));
 
         // 최대 라운드 도달 시 종료
-        Room room = roomService.findRoomById(roomId);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         int nowRound = roomAndRound.get(roomId);
         if (nowRound == room.getMaxGameRound()+1) {
             // 전체 게임 종료 시 바로 WAITING으로 변경
@@ -163,7 +165,8 @@ public class GameService {
     }
 
     private void initializeGameSetting(Long roomId) {
-        Room room = roomService.findRoomById(roomId);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         Map<Integer, GameMode> roundMap = new HashMap<>();
         Map<Integer, Song> songMap = new HashMap<>();
         List<Song> selectedSongs = songService.getRandomSongByYear(roomAndSelectedYears.get(roomId), room.getMaxGameRound());
@@ -177,10 +180,11 @@ public class GameService {
     }
 
     public void sendRoundInfo(String destination, Long roomId) {
-        RoomGame roomGame = roomGameService.getRoomGameByRoomId(roomId);
-        Long gameId = roomGame.getGame().getId();
-        Game game = gameRepository.findById(gameId).orElseThrow(() -> new RuntimeException("gameId not found"));
-        GameMode gameMode = game.getMode();
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+        // 일단 첫번째 모드만 계속 선택
+        GameMode gameMode = room.getRoomGames().get(0).getGame().getMode();
+
 //        Random random = new Random();
 //        GameMode selectedGameMode = gameModes.get(random.nextInt(gameModes.size()));
 //        log.info("선택된 게임 모드: {}", selectedGameMode);
@@ -296,7 +300,8 @@ public class GameService {
     @Transactional
     public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
-        Room room = roomService.findRoomById(roomId);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         sendRoomInfoToSubscriber(destination, room);
         sendUserInfoToSubscriber(destination, room);
     }
@@ -418,9 +423,9 @@ public class GameService {
         skipCount.put(roomId, skipCount.getOrDefault(roomId, 0) + 1);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
-        int participantCount = roomRepository.findById(roomId)
-                .map(room -> room.getMembers().size())
-                .orElse(0);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+        int participantCount = room.getMembers().size();
 
         log.debug("Room {} skip count: {}/{}", roomId, skipCount.get(roomId), participantCount);
 
@@ -456,7 +461,8 @@ public class GameService {
         log.debug("Room {} ready status map: {}", roomId, roomReadyStatus);
 
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
-        Room room = roomService.findRoomById(roomId);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         sendUserInfoToSubscriber(destination, room);
     }
 
@@ -471,5 +477,10 @@ public class GameService {
 
     public void updateSongYears(Long roomId, List<Integer> selectedYears) {
         roomAndSelectedYears.put(roomId, selectedYears);
+    }
+
+    public Game getGameByMode(com.curioussong.alsongdalsong.game.domain.GameMode mode) {
+        return gameRepository.findByMode(mode)
+                .orElseThrow(() -> new RuntimeException("Game with mode " + mode + " not found"));
     }
 }

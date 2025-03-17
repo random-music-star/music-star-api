@@ -1,6 +1,6 @@
 package com.curioussong.alsongdalsong.game.dto.roominfo;
 
-import com.curioussong.alsongdalsong.game.domain.Game.GameMode;
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.room.domain.Room.RoomFormat;
 import com.curioussong.alsongdalsong.room.domain.Room.RoomStatus;
 import lombok.Builder;

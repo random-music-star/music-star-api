@@ -18,17 +18,24 @@ public class RoomGame {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = false)
+    @ManyToOne
     private Game game;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "room_id", nullable = false)
+    @ManyToOne
+    @JoinColumn(name = "room_id")
     private Room room;
 
     @Builder
     public RoomGame(Game game, Room room) {
         this.game = game;
         this.room = room;
+    }
+
+    public void setRoom(Room room) {
+        this.room = room;
+    }
+
+    public void setGame(Game game) {
+        this.game  = game;
     }
 }
