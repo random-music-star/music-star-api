@@ -55,7 +55,7 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
             if (matcher.find()) { //
                 Long roomId = Long.valueOf(matcher.group(1)); // 마지막 숫자 추출
-
+                log.info("room id {}, It's work when subscribe the topic", roomId);
                 // 방이 가득 찼거나, 게임 진행 중이면 참가 불가.
                 if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId)) {
                     messagingTemplate.convertAndSend(destination, RefuseEnterResponseDTO.builder()

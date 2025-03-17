@@ -59,11 +59,12 @@ public class RoomService {
 
     @Transactional
     public void joinRoom(Long roomId, String userName) {
-        Room room = roomRepository.findById(roomId).orElse(null);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
 
         Member member = memberRepository.findByUsername(userName);
 
-        room.getMembers().add(member);
+        room.addMember(member);
 
         eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), userName));
     }
@@ -105,12 +106,14 @@ public class RoomService {
     }
 
     public boolean isRoomFull(Long roomId) {
-        Room room = roomRepository.findById(roomId).orElse(null);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getMembers().size() == room.getMaxPlayer();
     }
 
     public boolean isRoomInProgress(Long roomId) {
-        Room room = roomRepository.findById(roomId).orElse(null);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getStatus() == Room.RoomStatus.IN_PROGRESS;
     }
 }
