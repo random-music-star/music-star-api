@@ -1,8 +1,11 @@
 package com.curioussong.alsongdalsong.game.domain;
 
+import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class RoomManager {
 
     private final Map<Long, RoomInfo> roomMap = new ConcurrentHashMap<>();
@@ -21,6 +25,24 @@ public class RoomManager {
     // 방 정보 반환
     public RoomInfo getRoomInfo(Long roomId) {
         return roomMap.get(roomId);
+    }
+
+    // 방 정보 추가
+    public void addRoomInfo(Room room) {
+        RoomInfo roomInfo = new RoomInfo(room.getId());
+
+        // 기존 방 정보를 바탕으로 RoomInfo 초기화
+        roomInfo.setMaxGameRound(room.getMaxGameRound());
+
+        log.info("Members 호출 확인 : {} 명", room.getMembers().size());
+
+        // 멤버 목록을 가져와서 Ready 상태 & Skip 상태 초기화
+        for (Member member : room.getMembers()) {
+            roomInfo.getMemberReadyStatus().put(member.getId(), false);
+            roomInfo.getMemberSkipStatus().put(member.getId(), false);
+        }
+
+        roomMap.put(room.getId(), roomInfo);
     }
 
     // 방의 현재 라운드 반환

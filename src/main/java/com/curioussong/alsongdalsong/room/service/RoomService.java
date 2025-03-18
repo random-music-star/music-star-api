@@ -1,6 +1,7 @@
 package com.curioussong.alsongdalsong.room.service;
 
 import com.curioussong.alsongdalsong.game.domain.Game;
+import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.event.YearSelectionEvent;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.game.service.GameService;
@@ -42,6 +43,7 @@ public class RoomService {
     private final GameRepository gameRepository;
     private final RoomYearRepository roomYearRepository;
     private final RoomGameRepository roomGameRepository;
+    private final RoomManager roomManager;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -68,6 +70,8 @@ public class RoomService {
         );
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
+
+        roomManager.addRoomInfo(room);
 
         return CreateResponse.builder()
                 .roomId(room.getId())
