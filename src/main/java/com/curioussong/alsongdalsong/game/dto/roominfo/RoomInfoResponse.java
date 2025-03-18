@@ -18,6 +18,6 @@ public class RoomInfoResponse {
     private RoomFormat format;
     private RoomStatus status;
     private List<GameMode> mode;
-    private List<Integer> selectedYear;
+    private List<Long> selectedYear;
     private Boolean hasPassword;
 }

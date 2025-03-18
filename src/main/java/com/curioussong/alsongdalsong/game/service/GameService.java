@@ -436,7 +436,8 @@ public class GameService {
 
     }
 
-    public void updateSongYears(Long roomId, List<Integer> selectedYears) {
+    public void updateSongYears(Long roomId, List<Long> selectedYears) {
+        roomManager.setSelectedYears(roomId, selectedYears);
 //        roomAndSelectedYears.put(roomId, selectedYears);
     }
 

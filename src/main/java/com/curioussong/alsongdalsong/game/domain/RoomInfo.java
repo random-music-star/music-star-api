@@ -18,7 +18,7 @@ public class RoomInfo {
     private int maxGameRound;
     private int skipCount;
     private boolean answered;
-    private List<Integer> selectedYears;
+    private List<Long> selectedYears;
 
     private Map<Integer, Pair<GameMode, Song>> roundToInfo;
 

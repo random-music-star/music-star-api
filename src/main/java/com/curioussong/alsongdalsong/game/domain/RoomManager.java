@@ -51,7 +51,7 @@ public class RoomManager {
     }
 
     // 방의 노래년도 리스트 반환
-    public List<Integer> getSelectedYears(Long roomId) {
+    public List<Long> getSelectedYears(Long roomId) {
         return getRoomInfo(roomId).getSelectedYears();
     }
 
@@ -177,5 +177,10 @@ public class RoomManager {
         RoomInfo roomInfo = roomMap.get(roomId);
         roomInfo.getMemberSkipStatus().remove(memberId);
         roomInfo.getMemberReadyStatus().remove(memberId);
+    }
+
+    public void setSelectedYears(Long roomId, List<Long> selectedYears) {
+        RoomInfo roomInfo = roomMap.get(roomId);
+        roomInfo.setSelectedYears(selectedYears);
     }
 }
