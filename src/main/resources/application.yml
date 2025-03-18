@@ -13,6 +13,13 @@ spring:
         dialect: org.hibernate.dialect.MySQL8Dialect
         show-sql: true
 
+logging:
+  level:
+    root: INFO
+    com.zaxxer.hikari: INFO
+    org.hibernate.SQL: INFO
+    org.springframework.transaction: INFO
+
 ---
 spring:
   config:
