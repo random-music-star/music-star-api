@@ -24,8 +24,9 @@ public class SseController {
     @GetMapping(value = "/lobby", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter connectToLobby(HttpServletRequest request) {
         String sessionId = request.getSession().getId();
-        SseEmitter emitter = emitterManager.add(sessionId, 3600000L);
+//        SseEmitter emitter = emitterManager.add(sessionId, 3600000L);
 
+        SseEmitter emitter = new SseEmitter(3600000L);
         try {
             emitter.send(SseEmitter.event()
                     .name("CONNECT")
