@@ -434,7 +434,6 @@ public class GameService {
         Map<Long, Boolean> roomReadyStatus = roomManager.getReadyStatus(event.roomId());
 //        roomReadyStatus.put(event.username(), false);
 
-//        log.debug("User {} joined room {}. Ready status initialized to false.", event.username(), event.roomId());
     }
 
     public void updateSongYears(Long roomId, List<Integer> selectedYears) {
@@ -449,6 +448,9 @@ public class GameService {
     @EventListener
     public void handleUserLeavedEvent(UserLeavedEvent event) {
         Member member = memberService.getMemberByToken(event.username());
+        Room room = roomRepository.findById(event.roomId())
+                .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
+        room.removeMember(member);
         roomManager.deleteMember(event.roomId(), member.getId());
     }
 }
