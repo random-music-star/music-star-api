@@ -148,6 +148,7 @@ public class RoomService {
         return room.getStatus() == Room.RoomStatus.IN_PROGRESS;
     }
 
+    @Transactional(readOnly=true)
     public LobbyResponse getRoomDataForLobby() {
         Page<RoomDTO> roomPage = getRooms(0, 8);
 
