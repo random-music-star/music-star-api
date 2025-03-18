@@ -1,11 +1,13 @@
 package com.curioussong.alsongdalsong.room.event;
 
-public record RoomUpdatedEvent(Long roomId, ActionType actionType) {
+import com.curioussong.alsongdalsong.room.domain.Room;
+
+public record RoomUpdatedEvent(Room room, ActionType actionType) {
     public enum ActionType {
         CREATED, UPDATED, DELETED
     }
 
-    public RoomUpdatedEvent(Long roomId) {
-        this(roomId, ActionType.UPDATED);
+    public RoomUpdatedEvent(Room room) {
+        this(room, ActionType.UPDATED);
     }
 }

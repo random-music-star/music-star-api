@@ -88,7 +88,7 @@ public class GameService {
         if (!roomManager.areAllPlayersReady(roomId)) {
             return;
         }
-        eventPublisher.publishEvent(new GameStatusEvent(roomId, RoomStatus.IN_PROGRESS));
+        eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         sendRoomInfoToSubscriber(destination, room);
         roomManager.initializeGameSetting(roomId);
@@ -108,7 +108,7 @@ public class GameService {
         int nowRound = roomManager.getCurrentRound(roomId);
         if (nowRound == room.getMaxGameRound()+1) {
             // 전체 게임 종료 시 바로 WAITING으로 변경
-            eventPublisher.publishEvent(new GameStatusEvent(roomId, RoomStatus.WAITING));
+            eventPublisher.publishEvent(new GameStatusEvent(room, "WAITING"));
 
             messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
                             .type("gameEnd")

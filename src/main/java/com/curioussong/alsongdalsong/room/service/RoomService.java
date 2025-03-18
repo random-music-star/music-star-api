@@ -69,7 +69,7 @@ public class RoomService {
                 roomYearRepository.save(new RoomYear(room, year))
         );
 
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
 
         roomManager.addRoomInfo(room);
 
@@ -98,14 +98,16 @@ public class RoomService {
         Member host = room.getHost();
         log.debug("hostId:{}", host.getId());
         log.debug("memberId:{}", member.getId());
-        if(host.getId()!=member.getId()) {
+        if (host.getId() != member.getId()) {
             throw new IllegalArgumentException("방 설정은 방장만 변경 가능합니다.");
         }
 
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
-        eventPublisher.publishEvent(new YearSelectionEvent(room.getId(), request.getSelectedYears()));
         room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
+
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
     }
+
+
 
     @Transactional(readOnly=true)
     public Page<RoomDTO> getRooms(int page, int size) {
