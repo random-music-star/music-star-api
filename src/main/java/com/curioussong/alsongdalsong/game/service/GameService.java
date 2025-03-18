@@ -411,8 +411,8 @@ public class GameService {
     @Transactional
     public void toggleReady(String username, Long channelId, Long roomId) {
         Map<Long, Boolean> roomReadyStatus = roomManager.getReadyStatus(roomId);
-
-        boolean currentReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(username, false));
+        Member member = memberService.getMemberByToken(username);
+        boolean currentReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(member.getId(), false));
 
         boolean newReady = !currentReady;
         log.debug("User {} ready status: {} -> {}", username, currentReady, newReady);
