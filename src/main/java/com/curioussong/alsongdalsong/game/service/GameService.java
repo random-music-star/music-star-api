@@ -431,9 +431,13 @@ public class GameService {
 //    Todo: 방에 입장 시 사용자 레디 상태를 false로 세팅, joinRoom 기능 개발 이후 점검 필요
     @EventListener
     public void handleUserJoinedEvent(UserJoinedEvent event) {
-        Map<Long, Boolean> roomReadyStatus = roomManager.getReadyStatus(event.roomId());
-//        roomReadyStatus.put(event.username(), false);
-
+        Member member = memberService.getMemberByToken(event.username());
+        // host는 방을 만들면서 status가 초기화 되어 있음.
+        // host 외에 다른 사람이 방에 입장할 때 status 설정 해줘야 함.
+        if (roomManager.getRoomInfo(event.roomId()).getMemberReadyStatus().get(member.getId()) == null) {
+            roomManager.getReadyStatus(event.roomId()).put(member.getId(), false);
+            roomManager.getSkipStatus(event.roomId()).put(member.getId(), false);
+        }
     }
 
     public void updateSongYears(Long roomId, List<Long> selectedYears) {
