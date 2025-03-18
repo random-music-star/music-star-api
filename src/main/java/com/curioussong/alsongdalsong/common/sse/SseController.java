@@ -32,7 +32,7 @@ public class SseController {
                     .name("CONNECT")
                     .data("로비 SSE에 연결되었습니다."));
 
-            sendRoomData(emitter);
+//            sendRoomData(emitter);
         } catch (IOException e) {
             emitter.completeWithError(e);
         }
