@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.member.domain;
 
+import com.curioussong.alsongdalsong.room.domain.Room;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -28,6 +29,13 @@ public class Member {
 
     public enum MemberType {
         USER, GUEST
+    }
+
+    @ManyToOne
+    private Room room;
+
+    public void setRoom(Room room) {
+        this.room = room;
     }
 
     @Builder

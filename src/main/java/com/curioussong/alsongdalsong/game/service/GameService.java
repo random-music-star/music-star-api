@@ -3,6 +3,8 @@ package com.curioussong.alsongdalsong.game.service;
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
+import com.curioussong.alsongdalsong.game.domain.RoomInfo;
+import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
@@ -65,18 +67,11 @@ public class GameService {
     private final MemberService memberService;
     private final GameRepository gameRepository;
     private final RoomRepository roomRepository;
-    private final RoomGameService roomGameService;
     private final ApplicationEventPublisher eventPublisher;
     private final SongService songService;
     private final RoomGameRepository roomGameRepository;
 
-    private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
-    private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
-    private Map<Long, Map<Integer, Song>> roundAndSong = new HashMap<>(); // <roomId, <round, Song>> 쌍으로 저장p
-    private Map<Long, Integer> skipCount = new HashMap<>();
-    private Map<Long, Boolean> isAnswered = new HashMap<>(); // 방에서 정답을 맞추면 true 상태. 정답을 못맞추는 동안에는 false
-    private Map<Pair<Long, Long>, Boolean> isSkipped = new HashMap<>(); // <<roomId, memberId>, false>> 로 저장
-    private Map<Long, List<Integer>> roomAndSelectedYears = new HashMap<>();
+    private final RoomManager roomManager;
 
     private ScheduledFuture<?> scheduledTask;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -84,50 +79,33 @@ public class GameService {
     private Map<Long, ScheduledExecutorService> roomSingerHintTimerSchedulers = new ConcurrentHashMap<>(); // 방별 힌트 타이머 스케줄러
     private Map<Long, ScheduledExecutorService> roomRoundTimerSchedulers = new ConcurrentHashMap<>(); // 방별 라운드 타이머 스케줄러
     private final Map<Long, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>(); // 방별 타이머 스케줄러
-    private final Map<Long, Map<String, Boolean>> readyStatusMap = new ConcurrentHashMap<>();
 
     @Transactional
     public void startGame(Long channelId, Long roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        if (!areAllPlayersReady(roomId)) {
+
+        if (!roomManager.areAllPlayersReady(roomId)) {
             return;
         }
         eventPublisher.publishEvent(new GameStatusEvent(roomId, RoomStatus.IN_PROGRESS));
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         sendRoomInfoToSubscriber(destination, room);
-        initializeGameSetting(roomId);
+        roomManager.initializeGameSetting(roomId);
         startRound(channelId, roomId);
 
-        readyStatusMap.remove(roomId);
-    }
-
-    private boolean areAllPlayersReady(Long roomId) {
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        List<Member> members = room.getMembers();
-        Map<String, Boolean> roomReadyStatus = readyStatusMap.getOrDefault(roomId, new ConcurrentHashMap<>());
-
-        for (Member member : members) {;
-            boolean isReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(member.getUsername(), false));
-
-            if (!isReady) {
-                return false;
-            }
-        }
-
-        return true;
+        // TODO : readyStatusMap.remove(roomId);
     }
 
     public void startRound(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
-        log.info("Round : {} 진행중입니다.", roomAndRound.get(roomId));
+        log.info("Round : {} 진행중입니다.", roomManager.getCurrentRound(roomId));
 
         // 최대 라운드 도달 시 종료
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        int nowRound = roomAndRound.get(roomId);
+        int nowRound = roomManager.getCurrentRound(roomId);
         if (nowRound == room.getMaxGameRound()+1) {
             // 전체 게임 종료 시 바로 WAITING으로 변경
             eventPublisher.publishEvent(new GameStatusEvent(roomId, RoomStatus.WAITING));
@@ -154,31 +132,13 @@ public class GameService {
         }
 
         // skip 상태 초기화
-        for (Member member : room.getMembers()) {
-            isSkipped.put(Pair.of(roomId, member.getId()), false);
-        }
+        roomManager.initializeSkipStatus(roomId);
 
-        log.info("{} 번째 라운드 정보 전송", roomAndRound.get(roomId));
+        log.info("{} 번째 라운드 정보 전송", roomManager.getCurrentRound(roomId));
         sendRoundInfo(destination, roomId);
-        skipCount.put(roomId, 0);
 
         log.info("카운트 다운 시작");
         startCountdown(destination, roomId);
-    }
-
-    private void initializeGameSetting(Long roomId) {
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        Map<Integer, GameMode> roundMap = new HashMap<>();
-        Map<Integer, Song> songMap = new HashMap<>();
-        List<Song> selectedSongs = songService.getRandomSongByYear(roomAndSelectedYears.get(roomId), room.getMaxGameRound());
-        for (int i=1;i<=room.getMaxGameRound();i++) { // 현재는 한 게임당 20라운드 하드코딩
-            roundMap.put(i,GameMode.FULL);
-            songMap.put(i, selectedSongs.get(i-1));
-        }
-        roomAndRound.put(roomId, 1);
-        roundAndMode.put(roomId, roundMap);
-        roundAndSong.put(roomId, songMap);
     }
 
     public void sendRoundInfo(String destination, Long roomId) {
@@ -194,7 +154,7 @@ public class GameService {
                         .type("roundInfo")
                         .response(RoundResponse.builder()
                                 .mode(gameMode)
-                                .round(roomAndRound.get(roomId))
+                                .round(roomManager.getCurrentRound(roomId))
                                 .build())
                 .build());
     }
@@ -207,8 +167,8 @@ public class GameService {
                     Thread.sleep(1000);
                 }
                 sendCountdown(destination, 0);
-                countSongPlayTime(destination, roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getPlayTime(), roomId);
-                isAnswered.put(roomId, false);
+                countSongPlayTime(destination, roomManager.getSong(roomId).getPlayTime(), roomId);
+                roomManager.initAnswer(roomId);
                 sendQuizInfo(destination, roomId);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -249,7 +209,7 @@ public class GameService {
 
             log.info("channelId: {}, roomdId : {}", destination, roomId);
 
-            roomAndRound.put(roomId, roomAndRound.get(roomId) + 1);
+            roomManager.nextRound(roomId);
             scheduler.schedule(() -> startRound(channelId, roomId), 5, TimeUnit.SECONDS);
         } else {
             log.info("Pattern did not match destination: {}", destination);
@@ -257,7 +217,7 @@ public class GameService {
     }
 
     private void sendConsonantHint(String destination, Long roomId) {
-        String consonants = KoreanConsonantExtractor.extractConsonants(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getKorTitle());
+        String consonants = KoreanConsonantExtractor.extractConsonants(roomManager.getSong(roomId).getKorTitle());
         messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
                         .type("hint")
                         .response(HintResponse.builder()
@@ -267,12 +227,12 @@ public class GameService {
     }
 
     private void sendSingerHint(String destination, Long roomId) {
-        String consonants = KoreanConsonantExtractor.extractConsonants(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getKorTitle());
+        String consonants = KoreanConsonantExtractor.extractConsonants(roomManager.getSong(roomId).getKorTitle());
         messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
                 .type("hint")
                 .response(HintResponse.builder()
                         .title(consonants)
-                        .singer(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getArtist())
+                        .singer(roomManager.getSong(roomId).getArtist())
                         .build())
                 .build());
     }
@@ -282,7 +242,7 @@ public class GameService {
         messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
                         .type("quizInfo")
                         .response(QuizResponse.builder()
-                                .songUrl(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getUrl())
+                                .songUrl(roomManager.getSong(roomId).getUrl())
                                 .build())
                 .build());
     }
@@ -322,7 +282,7 @@ public class GameService {
                         .format(room.getFormat())
                         .status(room.getStatus())
                         .mode(gameModes)
-                        .selectedYear(roomAndSelectedYears.get(room.getId()))
+                        .selectedYear(roomManager.getSelectedYears(room.getId()))
                         .build())
                 .build());
     }
@@ -334,12 +294,10 @@ public class GameService {
 
         boolean allReady = true;
 
-        Map<String, Boolean> roomReadyStatus = readyStatusMap.getOrDefault(room.getId(), new ConcurrentHashMap<>());
-
         for (Long memberId : memberIds) {
             Member member = memberService.getMemberById(memberId);
             boolean isHost = memberId.equals(room.getHost().getId());
-            boolean isReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(member.getUsername(), false));
+            boolean isReady = Boolean.TRUE.equals(roomManager.getReady(room.getId(), memberId));
 
             log.debug("User {} ready status in response: {}", member.getUsername(), isReady);
 
@@ -365,12 +323,12 @@ public class GameService {
         // 채팅의 모든 공백 제거 및 대문자 치환
         String message = chatRequest.getRequest().getMessage().replaceAll("\\s+", "").toUpperCase();
 
-        int nowRound = roomAndRound.get(roomId);
+        int nowRound = roomManager.getCurrentRound(roomId);
         // 한글/영어 이외의 문자가 나오면 자름. (ex. 러브일일구(러브119) -> 러브일일구)
         // 공백 제거
-        String koreanAnswer = roundAndSong.get(roomId).get(nowRound).getKorTitle().replaceAll("[^가-힣].*", "").replaceAll("\\s+", "");
+        String koreanAnswer = roomManager.getSong(roomId).getKorTitle().replaceAll("[^가-힣].*", "").replaceAll("\\s+", "");
         // 영어는 대문자로 치환
-        String englishAnswer = roundAndSong.get(roomId).get(nowRound).getEngTitle();
+        String englishAnswer = roomManager.getSong(roomId).getEngTitle();
 
         // 영어 제목이 있는 노래인 경우 한글 제목과 영어 제목 둘 다 정답 처리
         if (englishAnswer != null) {
@@ -382,16 +340,17 @@ public class GameService {
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
         // 이미 정답을 맞춘 라운드이면 통과
-        if (isAnswered.get(roomId)) {
+        if (roomManager.isAnswered(roomId)) {
             return;
         }
 
-        isAnswered.put(roomId, true);
+        roomManager.setAnswer(roomId);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         cancelHintTimer(roomId);
 
-        String koreanTitle = roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getKorTitle();
-        String englishTitle = roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getEngTitle();
+        Song song = roomManager.getSong(roomId);
+        String koreanTitle = song.getKorTitle();
+        String englishTitle = song.getEngTitle();
         StringBuilder title = new StringBuilder();
         if (englishTitle != null) {
             title.append(koreanTitle).append("(").append(englishTitle).append(")");
@@ -403,7 +362,7 @@ public class GameService {
                         .response(ResultResponse.builder()
                                 .winner(userName)
                                 .songTitle(title.toString())
-                                .singer(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getArtist())
+                                .singer(song.getArtist())
                                 .score(1)
                                 .build())
                 .build());
@@ -414,33 +373,33 @@ public class GameService {
         Long memberId = memberService.getMemberByToken(username).getId();
 
         // 이미 스킵을 한 사용자라면
-        if (isSkipped.get(Pair.of(roomId, memberId))) {
+        if (roomManager.isSkipped(roomId, memberId)) {
             return;
         }
 
         // 스킵 상태 변환
-        isSkipped.put(Pair.of(roomId, memberId), true);
-
-        skipCount.put(roomId, skipCount.getOrDefault(roomId, 0) + 1);
+        roomManager.setSkip(roomId, memberId);
+        int currentSkipCount = roomManager.raiseSkip(roomId);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         int participantCount = room.getMembers().size();
 
-        log.debug("Room {} skip count: {}/{}", roomId, skipCount.get(roomId), participantCount);
+
+        log.debug("Room {} skip count: {}/{}", roomId, currentSkipCount, participantCount);
 
         // 스킵 정보 전송
         messagingTemplate.convertAndSend(destination, SkipResponseDTO.builder()
                 .type("skip")
                 .response(SkipResponse.builder()
-                        .skipPerson(skipCount.get(roomId))
+                        .skipPerson(currentSkipCount)
                         .build())
                 .build());
 
 
         // 참가자 절반 초과 시 즉시 다음 라운드 시작
-        if (skipCount.get(roomId) > participantCount / 2) {
+        if (currentSkipCount > participantCount / 2) {
             log.info("Skip count exceeded threshold, moving to next round.");
             cancelHintTimer(roomId);
             cancelRoundTimerAndTriggerImmediately(destination, roomId);
@@ -450,14 +409,15 @@ public class GameService {
 //    Todo: 방에 입장한 유저만 레디 상태 변경이 가능하도록 변경 필요
     @Transactional
     public void toggleReady(String username, Long channelId, Long roomId) {
-        Map<String, Boolean> roomReadyStatus = readyStatusMap.computeIfAbsent(roomId, k -> new ConcurrentHashMap<>());
+        Map<Long, Boolean> roomReadyStatus = roomManager.getReadyStatus(roomId);
 
         boolean currentReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(username, false));
 
         boolean newReady = !currentReady;
         log.debug("User {} ready status: {} -> {}", username, currentReady, newReady);
 
-        roomReadyStatus.put(username, !currentReady);
+        Long memberId = memberService.getMemberByToken(username).getId();
+        roomReadyStatus.put(memberId, !currentReady);
 
         log.debug("Room {} ready status map: {}", roomId, roomReadyStatus);
 
@@ -470,14 +430,14 @@ public class GameService {
 //    Todo: 방에 입장 시 사용자 레디 상태를 false로 세팅, joinRoom 기능 개발 이후 점검 필요
     @EventListener
     public void handleUserJoinedEvent(UserJoinedEvent event) {
-        Map<String, Boolean> roomReadyStatus = readyStatusMap.computeIfAbsent(event.roomId(), k -> new ConcurrentHashMap<>());
-        roomReadyStatus.put(event.username(), false);
+        Map<Long, Boolean> roomReadyStatus = roomManager.getReadyStatus(event.roomId());
+//        roomReadyStatus.put(event.username(), false);
 
-        log.debug("User {} joined room {}. Ready status initialized to false.", event.username(), event.roomId());
+//        log.debug("User {} joined room {}. Ready status initialized to false.", event.username(), event.roomId());
     }
 
     public void updateSongYears(Long roomId, List<Integer> selectedYears) {
-        roomAndSelectedYears.put(roomId, selectedYears);
+//        roomAndSelectedYears.put(roomId, selectedYears);
     }
 
     public Game getGameByMode(com.curioussong.alsongdalsong.game.domain.GameMode mode) {

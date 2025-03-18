@@ -56,8 +56,7 @@ public class Room {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany
-    @JoinColumn(name = "room_id")
+    @OneToMany(mappedBy = "room", fetch = FetchType.EAGER)
     private List<Member> members = new ArrayList<>();
 
 
@@ -107,6 +106,7 @@ public class Room {
     }
 
     public void addMember(Member member) {
-        this.members.add(member);
+        members.add(member);
+        member.setRoom(this);
     }
 }
