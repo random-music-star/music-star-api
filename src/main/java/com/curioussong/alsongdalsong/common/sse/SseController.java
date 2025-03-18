@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.common.sse;
 
 import com.curioussong.alsongdalsong.room.dto.LobbyResponse;
 import com.curioussong.alsongdalsong.room.service.RoomService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
@@ -21,8 +22,9 @@ public class SseController {
     private final RoomService roomService;
 
     @GetMapping(value = "/lobby", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter connectToLobby() {
-        SseEmitter emitter = emitterManager.add("lobby", 3600000L);
+    public SseEmitter connectToLobby(HttpServletRequest request) {
+        String sessionId = request.getSession().getId();
+        SseEmitter emitter = emitterManager.add(sessionId, 3600000L);
 
         try {
             emitter.send(SseEmitter.event()
@@ -36,6 +38,7 @@ public class SseController {
 
         return emitter;
     }
+
 
     @Async
     public void sendRoomData(SseEmitter emitter) {
