@@ -1,6 +1,5 @@
-package com.curioussong.alsongdalsong.roomgame.domain;
+package com.curioussong.alsongdalsong.roomyear.domain;
 
-import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -10,25 +9,25 @@ import lombok.NoArgsConstructor;
 
 @Entity
 @Getter
-@Table(name = "room_game")
+@Table(name = "room_year")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class RoomGame {
+public class RoomYear {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "game_id", nullable = false)
-    private Game game;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
 
+    @Column(name = "year", nullable = false, columnDefinition = "YEAR")
+    private Integer year;
+
     @Builder
-    public RoomGame(Game game, Room room) {
-        this.game = game;
+    public RoomYear(Room room, Integer year) {
         this.room = room;
+        this.year = year;
     }
 }
+

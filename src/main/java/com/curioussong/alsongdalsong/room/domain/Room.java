@@ -2,7 +2,6 @@ package com.curioussong.alsongdalsong.room.domain;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
-import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -57,11 +56,10 @@ public class Room {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "room", fetch = FetchType.EAGER)
+    @OneToMany
+    @JoinColumn(name = "room_id")
     private List<Member> members = new ArrayList<>();
 
-    @OneToMany(mappedBy = "room", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RoomGame> roomGames = new ArrayList<>();
 
     public enum RoomStatus {
         WAITING, IN_PROGRESS, FINISHED
@@ -109,12 +107,6 @@ public class Room {
     }
 
     public void addMember(Member member) {
-        members.add(member);
-        member.setRoom(this);
-    }
-
-    public void addRoomGame(RoomGame roomGame) {
-        roomGames.add(roomGame);
-        roomGame.setRoom(this); // 양방향 관계 유지
+        this.members.add(member);
     }
 }

@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.room.service;
 
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.event.YearSelectionEvent;
+import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.game.service.GameService;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
@@ -14,6 +15,9 @@ import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
+import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
+import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
+import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +41,9 @@ public class RoomService {
     private final RoomRepository roomRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final MemberRepository memberRepository;
-    private final GameService gameService;
+    private final GameRepository gameRepository;
+    private final RoomYearRepository roomYearRepository;
+    private final RoomGameRepository roomGameRepository;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -49,29 +55,22 @@ public class RoomService {
                 .build();
 
         room.addMember(member);
+        roomRepository.save(room);
 
         // GameMode 리스트를 기반으로 해당 Game 검색
         List<Game> games = request.getGameModes().stream()
-                .map(gameService::getGameByMode)
+                .map(gameMode -> gameRepository.findByMode(gameMode)
+                        .orElseThrow(()-> new EntityNotFoundException("해당하는 게임이 없습니다.")))
                 .toList();
 
-        // roomgame과 연관관계 설정
-        for (Game game : games) {
-            RoomGame roomgame = RoomGame.builder()
-                    .room(room)
-                    .game(game)
-                    .build();
-            roomgame.setGame(game);
-            roomgame.setRoom(room);
-            room.addRoomGame(roomgame);
-        }
+        games.forEach(game -> roomGameRepository.save(new RoomGame(game, room)));
 
-        roomRepository.save(room);
+        request.getSelectedYears().forEach(year ->
+                roomYearRepository.save(new RoomYear(room, year))
+        );
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
-        eventPublisher.publishEvent(new YearSelectionEvent(room.getId(), request.getSelectedYears()));
 
-//      Todo room 생성시 이벤트 등록하고 추후 game 서비스에서 받아 엔티티 형성
         return CreateResponse.builder()
                 .roomId(room.getId())
                 .build();
@@ -104,11 +103,6 @@ public class RoomService {
         eventPublisher.publishEvent(new RoomUpdatedEvent(room.getId()));
         eventPublisher.publishEvent(new YearSelectionEvent(room.getId(), request.getSelectedYears()));
         room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
-    }
-
-    @Transactional
-    public Room findRoomById(Long id) {
-        return roomRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
     }
 
     @Transactional(readOnly=true)

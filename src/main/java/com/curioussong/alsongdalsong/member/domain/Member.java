@@ -1,6 +1,5 @@
 package com.curioussong.alsongdalsong.member.domain;
 
-import com.curioussong.alsongdalsong.room.domain.Room;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -20,27 +19,21 @@ public class Member {
     @Column(name = "username", nullable = false, unique = true, length = 20)
     private String username;
 
-    @Column(name = "password", nullable = true, length = 30)
+    @Column(name = "password", length = 30)
     private String password;
 
     @Enumerated(EnumType.STRING)
     @Column(name="type", nullable=false)
     private MemberType type;
 
-    @ManyToOne
-    private Room room;
-
-    public void setRoom(Room room) {
-        this.room = room;
-    }
-
     public enum MemberType {
         USER, GUEST
     }
 
     @Builder
-    public Member(String username, MemberType type) {
+    public Member(String username, String password, MemberType type) {
         this.username = username;
+        this.password = password;
         this.type = type;
     }
 }

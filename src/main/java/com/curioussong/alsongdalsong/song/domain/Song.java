@@ -25,25 +25,21 @@ public class Song {
     @Column(name = "artist", nullable = false, length = 50)
     private String artist;
 
-    @Column(name = "genre", nullable = false, length = 25)
-    private String genre;
+    @Column(name = "url", nullable = false)
+    private String url;
 
-    @Column(name = "youtube_url", nullable = false)
-    private String youtubeUrl;
-
-    @Column(name = "year", nullable = false)
+    @Column(name = "year", nullable = false, columnDefinition = "YEAR")
     private Integer year;
 
     @Column(name = "play_time", nullable = false)
     private Integer playTime;
 
     @Builder
-    public Song(String korTitle, String engTitle, String artist, String genre, String youtubeUrl, Integer year, Integer playTime) {
+    public Song(String korTitle, String engTitle, String artist, String url, Integer year, Integer playTime) {
         this.korTitle = korTitle;
         this.engTitle = engTitle;
         this.artist = artist;
-        this.genre = genre;
-        this.youtubeUrl = youtubeUrl;
+        this.url = url;
         this.year = year;
         this.playTime = playTime;
     }

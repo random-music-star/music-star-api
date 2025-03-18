@@ -32,6 +32,7 @@ import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.domain.Room.RoomStatus;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
+import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
@@ -67,6 +68,7 @@ public class GameService {
     private final RoomGameService roomGameService;
     private final ApplicationEventPublisher eventPublisher;
     private final SongService songService;
+    private final RoomGameRepository roomGameRepository;
 
     private Map<Long, Integer> roomAndRound = new HashMap<>(); // <roomId, round> 쌍으로 저장
     private Map<Long, Map<Integer,GameMode>> roundAndMode = new HashMap<>(); // <roomId, <round, FULL>> 쌍으로 저장
@@ -183,8 +185,7 @@ public class GameService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         // 일단 첫번째 모드만 계속 선택
-        GameMode gameMode = room.getRoomGames().get(0).getGame().getMode();
-
+        GameMode gameMode = roomGameRepository.findByRoomId(roomId).getGame().getMode();
 //        Random random = new Random();
 //        GameMode selectedGameMode = gameModes.get(random.nextInt(gameModes.size()));
 //        log.info("선택된 게임 모드: {}", selectedGameMode);
@@ -281,7 +282,7 @@ public class GameService {
         messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
                         .type("quizInfo")
                         .response(QuizResponse.builder()
-                                .songUrl(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getYoutubeUrl())
+                                .songUrl(roundAndSong.get(roomId).get(roomAndRound.get(roomId)).getUrl())
                                 .build())
                 .build());
     }
