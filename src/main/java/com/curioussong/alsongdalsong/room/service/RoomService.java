@@ -7,10 +7,7 @@ import com.curioussong.alsongdalsong.game.service.GameService;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
-import com.curioussong.alsongdalsong.room.dto.CreateRequest;
-import com.curioussong.alsongdalsong.room.dto.CreateResponse;
-import com.curioussong.alsongdalsong.room.dto.RoomDTO;
-import com.curioussong.alsongdalsong.room.dto.UpdateRequest;
+import com.curioussong.alsongdalsong.room.dto.*;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
@@ -29,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -129,5 +127,21 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getStatus() == Room.RoomStatus.IN_PROGRESS;
+    }
+
+    @Transactional(readOnly = true)
+    public LobbyResponse getRoomDataForLobby() {
+        Page<RoomDTO> roomPage = getRooms(0, 8);
+
+        for (RoomDTO roomDTO : roomPage.getContent()) {
+            roomDTO.setGameModes(List.of("FULL"));
+        }
+
+        return LobbyResponse.builder()
+                .rooms(roomPage.getContent())
+                .totalPages(roomPage.getTotalPages())
+                .totalElements(roomPage.getTotalElements())
+                .currentPage(roomPage.getNumber())
+                .build();
     }
 }
