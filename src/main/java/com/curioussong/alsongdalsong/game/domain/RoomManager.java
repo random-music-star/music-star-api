@@ -2,6 +2,8 @@ package com.curioussong.alsongdalsong.game.domain;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
+import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
+import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
 import lombok.RequiredArgsConstructor;
@@ -9,9 +11,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -21,6 +25,7 @@ public class RoomManager {
     private final Map<Long, RoomInfo> roomMap = new ConcurrentHashMap<>();
 
     private final SongService songService;
+    private final RoomYearRepository roomYearRepository;
 
     // 방 정보 반환
     public RoomInfo getRoomInfo(Long roomId) {
@@ -42,7 +47,17 @@ public class RoomManager {
             roomInfo.getMemberSkipStatus().put(member.getId(), false);
         }
 
+        // 노래 년도 가져오기
+        roomInfo.setSelectedYears(getSelectedYearsFromRoomYear(room));
+
         roomMap.put(room.getId(), roomInfo);
+    }
+
+    public List<Integer> getSelectedYearsFromRoomYear(Room room) {
+        return roomYearRepository.findAllByRoom(room)
+                .stream()
+                .map(RoomYear::getYear)
+                .collect(Collectors.toList());
     }
 
     // 방의 현재 라운드 반환
@@ -51,7 +66,7 @@ public class RoomManager {
     }
 
     // 방의 노래년도 리스트 반환
-    public List<Long> getSelectedYears(Long roomId) {
+    public List<Integer> getSelectedYears(Long roomId) {
         return getRoomInfo(roomId).getSelectedYears();
     }
 
@@ -184,7 +199,7 @@ public class RoomManager {
         roomInfo.getMemberReadyStatus().remove(memberId);
     }
 
-    public void setSelectedYears(Long roomId, List<Long> selectedYears) {
+    public void setSelectedYears(Long roomId, List<Integer> selectedYears) {
         RoomInfo roomInfo = roomMap.get(roomId);
         roomInfo.setSelectedYears(selectedYears);
     }

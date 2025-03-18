@@ -17,7 +17,7 @@ public class SongService {
     private final SongRepository songRepository;
 
     @Transactional
-    public List<Song> getRandomSongByYear(List<Long> years, Integer maxRound) {
+    public List<Song> getRandomSongByYear(List<Integer> years, Integer maxRound) {
         return songRepository.findRandomSongsByYears(years, maxRound);
     }
 }

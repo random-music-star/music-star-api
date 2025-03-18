@@ -269,7 +269,6 @@ public class GameService {
     }
 
     private void sendRoomInfoToSubscriber(String destination, Room room) {
-        // 임시 하드코딩
         List<GameMode> gameModes = new ArrayList<>();
         gameModes.add(GameMode.FULL);
 
@@ -440,7 +439,7 @@ public class GameService {
         }
     }
 
-    public void updateSongYears(Long roomId, List<Long> selectedYears) {
+    public void updateSongYears(Long roomId, List<Integer> selectedYears) {
         roomManager.setSelectedYears(roomId, selectedYears);
 //        roomAndSelectedYears.put(roomId, selectedYears);
     }
