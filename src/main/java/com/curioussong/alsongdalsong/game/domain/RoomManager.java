@@ -172,4 +172,10 @@ public class RoomManager {
         RoomInfo roomInfo = roomMap.get(roomId);
         return roomInfo.getMemberReadyStatus();
     }
+
+    public void deleteMember(Long roomId, Long memberId) {
+        RoomInfo roomInfo = roomMap.get(roomId);
+        roomInfo.getMemberSkipStatus().remove(memberId);
+        roomInfo.getMemberReadyStatus().remove(memberId);
+    }
 }

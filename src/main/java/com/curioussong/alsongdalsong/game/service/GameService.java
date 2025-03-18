@@ -32,6 +32,7 @@ import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.domain.Room.RoomStatus;
+import com.curioussong.alsongdalsong.room.event.UserLeavedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
@@ -443,5 +444,11 @@ public class GameService {
     public Game getGameByMode(com.curioussong.alsongdalsong.game.domain.GameMode mode) {
         return gameRepository.findByMode(mode)
                 .orElseThrow(() -> new RuntimeException("Game with mode " + mode + " not found"));
+    }
+
+    @EventListener
+    public void handleUserLeavedEvent(UserLeavedEvent event) {
+        Member member = memberService.getMemberByToken(event.username());
+        roomManager.deleteMember(event.roomId(), member.getId());
     }
 }

@@ -109,4 +109,9 @@ public class Room {
         members.add(member);
         member.setRoom(this);
     }
+
+    public void removeMember(Member member) {
+        members.remove(member);
+        member.setRoom(null);
+    }
 }

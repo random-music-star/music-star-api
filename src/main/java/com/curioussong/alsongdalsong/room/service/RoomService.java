@@ -11,6 +11,7 @@ import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.*;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
+import com.curioussong.alsongdalsong.room.event.UserLeavedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
@@ -88,6 +89,18 @@ public class RoomService {
         room.addMember(member);
 
         eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), userName));
+    }
+
+    @Transactional
+    public void leaveRoom(Long roomId, String userName) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
+
+        Member member = memberRepository.findByUsername(userName);
+
+        room.removeMember(member);
+
+        eventPublisher.publishEvent(new UserLeavedEvent(room.getId(), userName));
     }
 
     @Transactional
