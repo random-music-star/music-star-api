@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Setter
 public class RoomInfo {
     private Long roomId;
+    private Long channelId;
     private int currentRound;
     private int maxGameRound;
     private int skipCount;
@@ -28,8 +29,9 @@ public class RoomInfo {
     private Map<Long, Boolean> memberReadyStatus;
     private Map<Long, Boolean> memberSkipStatus;
 
-    public RoomInfo(Long roomId) {
+    public RoomInfo(Long roomId, Long channelId) {
         this.roomId = roomId;
+        this.channelId = channelId;
         this.currentRound = 1;
         this.maxGameRound = 20; // TODO : 임의로 설정
         this.skipCount = 0;

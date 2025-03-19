@@ -1,5 +1,7 @@
 package com.curioussong.alsongdalsong.game.domain;
 
+import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
+import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
@@ -9,6 +11,7 @@ import com.curioussong.alsongdalsong.song.service.SongService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -26,6 +29,7 @@ public class RoomManager {
 
     private final SongService songService;
     private final RoomYearRepository roomYearRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     // 방 정보 반환
     public RoomInfo getRoomInfo(Long roomId) {
@@ -33,8 +37,8 @@ public class RoomManager {
     }
 
     // 방 정보 추가
-    public void addRoomInfo(Room room) {
-        RoomInfo roomInfo = new RoomInfo(room.getId());
+    public void addRoomInfo(Room room, Long channelId) {
+        RoomInfo roomInfo = new RoomInfo(room.getId(), channelId);
 
         // 기존 방 정보를 바탕으로 RoomInfo 초기화
         roomInfo.setMaxGameRound(room.getMaxGameRound());
@@ -217,5 +221,33 @@ public class RoomManager {
     public void setSelectedYears(Long roomId, List<Integer> selectedYears) {
         RoomInfo roomInfo = roomMap.get(roomId);
         roomInfo.setSelectedYears(selectedYears);
+    }
+
+    public void updateRoomInfo(Room room, List<Integer> updatedSelectedYears) {
+        Long roomId = room.getId();
+        RoomInfo roomInfo = roomMap.get(roomId);
+
+        log.info("Updating RoomInfo for roomId: {}", roomId);
+        roomInfo.setSelectedYears(updatedSelectedYears);
+
+
+        String destination = String.format("/topic/channel/%d/room/%d", roomInfo.getChannelId(), roomId);
+        List<GameMode> gameModes = new ArrayList<>();
+        gameModes.add(GameMode.FULL);
+
+
+        messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
+                .type("roomInfo")
+                .response(RoomInfoResponse.builder()
+                        .roomTitle(room.getTitle())
+                        .maxPlayer(room.getMaxPlayer())
+                        .maxGameRound(room.getMaxGameRound())
+                        .hasPassword(room.getPassword()!=null&&!room.getPassword().isEmpty())
+                        .format(room.getFormat())
+                        .status(room.getStatus())
+                        .mode(gameModes)
+                        .selectedYear(updatedSelectedYears)
+                        .build())
+                .build());
     }
 }

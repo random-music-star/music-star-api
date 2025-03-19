@@ -10,6 +10,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 public class CreateRequest {
+    private Long channelId;
     private String title;
     private String password;
     private String format;

@@ -2,9 +2,7 @@ package com.curioussong.alsongdalsong.room.service;
 
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
-import com.curioussong.alsongdalsong.game.event.YearSelectionEvent;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
-import com.curioussong.alsongdalsong.game.service.GameService;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -72,7 +70,7 @@ public class RoomService {
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room));
 
-        roomManager.addRoomInfo(room);
+        roomManager.addRoomInfo(room, request.getChannelId());
 
         return CreateResponse.builder()
                 .roomId(room.getId())
@@ -116,6 +114,8 @@ public class RoomService {
         }
 
         room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
+
+        roomManager.updateRoomInfo(room, request.getSelectedYears());
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room));
     }
