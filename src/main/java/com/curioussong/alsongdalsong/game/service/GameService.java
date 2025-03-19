@@ -114,25 +114,16 @@ public class GameService {
         int nowRound = roomManager.getCurrentRound(roomId);
         log.debug("nowRound in startRound Method : {}", nowRound);
 
+        String winner = findWinnerByScore(roomId, 20);
+
+        if(winner != null){
+            log.info("Player {} reached 20 points, ending game.", winner);
+            endGame(roomId, destination);
+            return;
+        }
         // 전체 게임 종료 처리
         if (nowRound == room.getMaxGameRound()+1) {
-            String finalWinner = roomManager.getRoomInfo(roomId).getScore().entrySet().stream()
-                    .max(Map.Entry.comparingByValue())
-                    .map(Map.Entry::getKey)
-                    .orElse(null);
-            log.info("finalWinner : {}", finalWinner);
-
-            messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
-                    .type("gameEnd")
-                    .response(GameEndResponse.builder()
-                            .winner(finalWinner)
-                            .build())
-                    .build());
-
-            // 전체 게임 종료 시 3초 후 WAITING으로 변경
-            scheduler.schedule(() -> eventPublisher.publishEvent(new GameStatusEvent(room, "WAITING")),
-                    3, TimeUnit.SECONDS);
-
+            endGame(roomId, destination);
             return;
         }
 
@@ -527,5 +518,35 @@ public class GameService {
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
         room.removeMember(member);
         roomManager.deleteMember(event.roomId(), member.getId());
+    }
+
+    // 최고 점수를 가진 플레이어 찾기
+    private String findWinnerByScore(Long roomId, int minScore) {
+        return roomManager.getRoomInfo(roomId).getScore().entrySet()
+                .stream()
+                .filter(entry -> entry.getValue() >= minScore)
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse(null);
+    }
+
+    private void endGame(Long roomId, String destination) {
+        // 최고 점수 가진 플레이어 찾기
+        String finalWinner = findWinnerByScore(roomId, 0);
+
+        log.info("Game ended. Final winner: {}", finalWinner);
+
+        messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
+                .type("gameEnd")
+                .response(GameEndResponse.builder()
+                        .winner(finalWinner)
+                        .build())
+                .build());
+
+        // 전체 게임 종료 시 3초 후 WAITING 상태로 변경
+        scheduler.schedule(() -> eventPublisher.publishEvent(new GameStatusEvent(
+                roomRepository.findById(roomId)
+                        .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다.")),
+                "WAITING")), 3, TimeUnit.SECONDS);
     }
 }
