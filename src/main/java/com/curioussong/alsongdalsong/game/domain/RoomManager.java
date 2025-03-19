@@ -125,6 +125,21 @@ public class RoomManager {
 
         // 라운드 초기화
         roomInfo.setCurrentRound(1);
+
+        // 사용자 점수 초기화
+        initializeScores(roomId);
+        // 정답자 초기화
+        initializeRoundWinner(roomId);
+    }
+
+    private void initializeRoundWinner(Long roomId) {
+        RoomInfo roomInfo = getRoomInfo(roomId);
+        roomInfo.getRoundWinner().clear();
+    }
+
+    private void initializeScores(Long roomId) {
+        RoomInfo roomInfo = getRoomInfo(roomId);
+        roomInfo.getScore().clear();
     }
 
     // 현재 라운드의 곡 정보 반환

@@ -9,6 +9,8 @@ import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.move.MoveResponse;
+import com.curioussong.alsongdalsong.game.dto.move.MoveResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.next.NextResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponse;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponseDTO;
@@ -123,6 +125,8 @@ public class GameService {
         roomSingerHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
         roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
 
+        roomManager.getRoomInfo(roomId).getRoundWinner().put(roomId, ""); // 라운드 시작 시 현재 라운드 정답자 초기화
+
         log.info("skip 상태 초기화 시작");
 
         if (room.getMembers() == null) {
@@ -146,15 +150,26 @@ public class GameService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         // 일단 첫번째 모드만 계속 선택
-        GameMode gameMode = roomGameRepository.findByRoomId(roomId).getGame().getMode();
+//        RoomGame roomGame = roomGameRepository.findByRoom(room);
+//        log.info("roomGame: {}", roomGame.getGame());
+//        GameMode gameMode = roomGame.getGame().getMode();
+//        log.info("gameMode: {}", gameMode);
 //        Random random = new Random();
 //        GameMode selectedGameMode = gameModes.get(random.nextInt(gameModes.size()));
 //        log.info("선택된 게임 모드: {}", selectedGameMode);
 
+        log.info("build dto");
+        RoundResponseDTO dto = RoundResponseDTO.builder()
+                .type("roundInfo")
+                .response(RoundResponse.builder()
+                                .mode(GameMode.FULL)
+                                .round(roomManager.getCurrentRound(roomId))
+                                .build()).build();
+        log.info("roundInfo: {}", dto.getResponse().getRound());
         messagingTemplate.convertAndSend(destination, RoundResponseDTO.builder()
                         .type("roundInfo")
                         .response(RoundResponse.builder()
-                                .mode(gameMode)
+                                .mode(GameMode.FULL)
                                 .round(roomManager.getCurrentRound(roomId))
                                 .build())
                 .build());
@@ -211,7 +226,14 @@ public class GameService {
             log.info("channelId: {}, roomdId : {}", destination, roomId);
 
             roomManager.nextRound(roomId);
-            scheduler.schedule(() -> startRound(channelId, roomId), 5, TimeUnit.SECONDS);
+
+            // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
+            if (roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId).isEmpty()) {
+                startRound(channelId, roomId);
+            } else {
+                sendUserPosition(destination, roomId); // 사용자 위치 정보 전송
+                scheduler.schedule(() -> startRound(channelId, roomId), 300, TimeUnit.MILLISECONDS);
+            }
         } else {
             log.info("Pattern did not match destination: {}", destination);
         }
@@ -257,6 +279,20 @@ public class GameService {
                 .build();
 
         messagingTemplate.convertAndSend(destination, timerResponse);
+    }
+
+    private void sendUserPosition(String destination, Long roomId) {
+        String userWhoMove = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
+        Integer position = roomManager.getRoomInfo(roomId).getScore().get(userWhoMove);
+        MoveResponseDTO moveResponseDTO = MoveResponseDTO.builder()
+                .type("move")
+                .response(MoveResponse.builder()
+                        .username(userWhoMove)
+                        .position(position)
+                        .build())
+                .build();
+
+        messagingTemplate.convertAndSend(destination, moveResponseDTO);
     }
 
     @Transactional
@@ -343,6 +379,15 @@ public class GameService {
         if (roomManager.isAnswered(roomId)) {
             return;
         }
+
+        // 정답자 점수 + 1
+        // 게임 시작 시 map을 clear 하므로, 사용자 이름으로 접근 시 null이면 1 할당, 아니면 +!
+        Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
+        scoreMap.compute(userName, (key, value) -> (value == null) ? 1 : value + 1);
+
+        // 방의 현재 라운드 정답자 저장
+        Map<Long, String> roundWinner = roomManager.getRoomInfo(roomId).getRoundWinner();
+        roundWinner.put(roomId, userName);
 
         roomManager.setAnswer(roomId);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
