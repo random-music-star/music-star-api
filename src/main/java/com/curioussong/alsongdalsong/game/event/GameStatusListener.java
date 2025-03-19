@@ -24,7 +24,6 @@ public class GameStatusListener {
     private final RoomRepository roomRepository;
     private final SseEmitterManager sseEmitterManager;
 
-    @Async // 🚀 비동기 처리 추가
     @EventListener
     @Transactional
     public void handleGameStatusEvent(GameStatusEvent event) {
@@ -35,10 +34,10 @@ public class GameStatusListener {
 
         try {
             Room.RoomStatus newStatus = Room.RoomStatus.valueOf(event.status());
-            room.updateStatus(newStatus); // 🚀 JPA 영속성 컨텍스트가 변경 감지
+            room.updateStatus(newStatus);
         } catch (IllegalArgumentException e) {
             log.error("잘못된 상태 값: {}", event.status());
-            return; // 잘못된 상태값이면 처리 중단
+            return;
         }
 
         sendRoomUpdateToClients(room);

@@ -87,10 +87,12 @@ public class GameService {
     public void startGame(Long channelId, Long roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-
+        log.debug("Starting game in room {}", roomId);
         if (!roomManager.areAllPlayersReady(roomId)) {
+            log.debug("Not all players are ready in room {}. Cancelling game start.", roomId);
             return;
         }
+        log.debug("All players are ready, proceeding to start the game.");
         eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         sendRoomInfoToSubscriber(destination, room);
@@ -109,6 +111,7 @@ public class GameService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         int nowRound = roomManager.getCurrentRound(roomId);
+        log.debug("nowRound in startRound Method : {}", nowRound);
         if (nowRound == room.getMaxGameRound()+1) {
             // 전체 게임 종료 시 바로 WAITING으로 변경
             eventPublisher.publishEvent(new GameStatusEvent(room, "WAITING"));
@@ -149,6 +152,8 @@ public class GameService {
     public void sendRoundInfo(String destination, Long roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+
+        log.debug("sendRoundInfo 호출됨 - destination: {}, roomId: {}", destination, roomId);
         // 일단 첫번째 모드만 계속 선택
 //        RoomGame roomGame = roomGameRepository.findByRoom(room);
 //        log.info("roomGame: {}", roomGame.getGame());
@@ -173,6 +178,7 @@ public class GameService {
                                 .round(roomManager.getCurrentRound(roomId))
                                 .build())
                 .build());
+        log.debug("sendRoundInfo 메시지 전송 완료 - round: {}", roomManager.getCurrentRound(roomId));
     }
 
     public void startCountdown(String destination, Long roomId) {
