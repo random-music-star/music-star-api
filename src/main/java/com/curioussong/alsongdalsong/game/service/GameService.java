@@ -11,6 +11,7 @@ import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.move.MoveResponse;
 import com.curioussong.alsongdalsong.game.dto.move.MoveResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.next.NextResponse;
 import com.curioussong.alsongdalsong.game.dto.next.NextResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponse;
 import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponseDTO;
@@ -112,15 +113,26 @@ public class GameService {
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         int nowRound = roomManager.getCurrentRound(roomId);
         log.debug("nowRound in startRound Method : {}", nowRound);
+
+        // 전체 게임 종료 처리
         if (nowRound == room.getMaxGameRound()+1) {
-            // 전체 게임 종료 시 바로 WAITING으로 변경
-            eventPublisher.publishEvent(new GameStatusEvent(room, "WAITING"));
+            String finalWinner = roomManager.getRoomInfo(roomId).getScore().entrySet().stream()
+                    .max(Map.Entry.comparingByValue())
+                    .map(Map.Entry::getKey)
+                    .orElse(null);
+            log.info("finalWinner : {}", finalWinner);
 
             messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
-                            .type("gameEnd")
-                            .response(GameEndResponse.builder()
-                                    .build())
+                    .type("gameEnd")
+                    .response(GameEndResponse.builder()
+                            .winner(finalWinner)
+                            .build())
                     .build());
+
+            // 전체 게임 종료 시 3초 후 WAITING으로 변경
+            scheduler.schedule(() -> eventPublisher.publishEvent(new GameStatusEvent(room, "WAITING")),
+                    3, TimeUnit.SECONDS);
+
             return;
         }
 
@@ -216,10 +228,6 @@ public class GameService {
     }
 
     private void triggerEndEvent(String destination) {
-        messagingTemplate.convertAndSend(destination, NextResponseDTO.builder()
-                .type("next")
-                .build());
-
         log.info("EndEvent 트리거 활성화");
 
         Pattern pattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
@@ -233,16 +241,28 @@ public class GameService {
 
             roomManager.nextRound(roomId);
 
-            // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
-            if (roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId).isEmpty()) {
-                startRound(channelId, roomId);
-            } else {
+            boolean isWinnerExist = !roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId).isEmpty();
+            sendNextMessage(destination, roomId, isWinnerExist);
+
+            if (isWinnerExist) {
                 sendUserPosition(destination, roomId); // 사용자 위치 정보 전송
                 scheduler.schedule(() -> startRound(channelId, roomId), 300, TimeUnit.MILLISECONDS);
+            } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
+                startRound(channelId, roomId);
             }
         } else {
             log.info("Pattern did not match destination: {}", destination);
         }
+    }
+
+    private void sendNextMessage(String destination, Long roomId, boolean isWinnerExist) {
+        messagingTemplate.convertAndSend(destination, NextResponseDTO.builder()
+                .type("next")
+                .response(NextResponse.builder()
+                        .username(roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId))
+                        .totalMovement(isWinnerExist ? 4 : 0)
+                        .build())
+                .build());
     }
 
     private void sendConsonantHint(String destination, Long roomId) {
@@ -389,7 +409,7 @@ public class GameService {
         // 정답자 점수 + 1
         // 게임 시작 시 map을 clear 하므로, 사용자 이름으로 접근 시 null이면 1 할당, 아니면 +!
         Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
-        scoreMap.compute(userName, (key, value) -> (value == null) ? 1 : value + 1);
+        scoreMap.compute(userName, (key, value) -> (value == null) ? 4 : value + 4);
 
         // 방의 현재 라운드 정답자 저장
         Map<Long, String> roundWinner = roomManager.getRoomInfo(roomId).getRoundWinner();

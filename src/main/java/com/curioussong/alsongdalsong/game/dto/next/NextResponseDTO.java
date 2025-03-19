@@ -9,5 +9,5 @@ import lombok.Setter;
 @Builder
 public class NextResponseDTO {
     private String type;
-    private String response;
+    private NextResponse response;
 }
