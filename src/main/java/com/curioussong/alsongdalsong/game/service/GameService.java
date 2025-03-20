@@ -577,6 +577,55 @@ public class GameService {
                         .build())
                 .build());
 
+
+        // 멤버 상태 초기화
+        roomManager.initializeMemberStatus(roomId);
+
+        // 유저 정보 전송
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+
+        List<Long> memberIds = room.getMembers().stream()
+                .map(Member::getId).toList();
+        List<UserInfo> userInfoList = new ArrayList<>();
+
+        for (Long memberId : memberIds) {
+            Member member = memberService.getMemberById(memberId);
+            boolean isHost = memberId.equals(room.getHost().getId());
+
+            log.debug("User {} ready status in response: {}", member.getUsername(), false);
+
+            UserInfo userInfo = new UserInfo(member.getUsername(), false, isHost);
+            userInfoList.add(userInfo);
+        }
+
+        messagingTemplate.convertAndSend(destination, UserInfoResponseDTO
+                .builder()
+                .type("userInfo")
+                .response(UserInfoResponse.builder()
+                        .userInfoList(userInfoList)
+                        .allReady(false)
+                        .build())
+                .build());
+
+
+        // 방 정보 전송
+        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
+
+        messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
+                .type("roomInfo")
+                .response(RoomInfoResponse.builder()
+                        .roomTitle(room.getTitle())
+                        .maxPlayer(room.getMaxPlayer())
+                        .maxGameRound(room.getMaxGameRound())
+                        .hasPassword(room.getPassword()!=null&&!room.getPassword().isEmpty())
+                        .format(room.getFormat())
+                        .status(room.getStatus())
+                        .mode(gameModes)
+                        .selectedYear(roomManager.getSelectedYears(roomId))
+                        .build())
+                .build());
+
         // 전체 게임 종료 시 3초 후 WAITING 상태로 변경
         scheduler.schedule(() -> eventPublisher.publishEvent(new GameStatusEvent(
                 roomRepository.findById(roomId)
