@@ -222,7 +222,6 @@ public class GameService {
 
             log.info("channelId: {}, roomdId : {}", destination, roomId);
 
-            roomManager.nextRound(roomId);
             roomManager.updateIsSongPlaying(roomId);
 
             boolean isWinnerExist = !roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId).isEmpty();
@@ -230,7 +229,6 @@ public class GameService {
 
             if (isWinnerExist) {
                 handleSendingPositionMessage(destination, roomId);
-                startRound(channelId, roomId);
             } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
                 sendGameResult(destination, roomId, roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId));
                 try {
@@ -238,8 +236,9 @@ public class GameService {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                startRound(channelId, roomId);
             }
+            roomManager.nextRound(roomId);
+            startRound(channelId, roomId);
         } else {
             log.info("Pattern did not match destination: {}", destination);
         }
