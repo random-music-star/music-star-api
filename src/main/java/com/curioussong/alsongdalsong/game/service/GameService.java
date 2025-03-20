@@ -231,6 +231,7 @@ public class GameService {
             log.info("channelId: {}, roomdId : {}", destination, roomId);
 
             roomManager.nextRound(roomId);
+            roomManager.updateIsSongPlaying(roomId);
 
             boolean isWinnerExist = !roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId).isEmpty();
             sendNextMessage(destination, roomId, isWinnerExist);
@@ -310,6 +311,8 @@ public class GameService {
                                 .songUrl(roomManager.getSong(roomId).getUrl())
                                 .build())
                 .build());
+        roomManager.updateIsSongPlaying(roomId);
+        log.info("updateIsSongPlaying : {}", roomManager.getIsSongPlaying(roomId));
     }
 
     private void sendCountdown(String destination, int countdown) {
@@ -458,6 +461,11 @@ public class GameService {
 
         // 이미 스킵을 한 사용자라면
         if (roomManager.isSkipped(roomId, memberId)) {
+            return;
+        }
+
+        // 노래가 재생 중일 때만 스킵 가능
+        if (!roomManager.getIsSongPlaying(roomId)) {
             return;
         }
 

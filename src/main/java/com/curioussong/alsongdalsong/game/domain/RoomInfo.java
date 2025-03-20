@@ -24,6 +24,7 @@ public class RoomInfo {
     private Map<Long, String> roundWinner; // 각 방의 현재 정답자 확인용
     private Map<String, Integer> userMovement;
     private Map<Integer, Pair<GameMode, Song>> roundToInfo;
+    private Map<Long, Boolean> isSongPlaying;
 
     // memberId에 따른 skip상태, ready상태
     private Map<Long, Boolean> memberReadyStatus;
@@ -43,6 +44,7 @@ public class RoomInfo {
         this.score = new ConcurrentHashMap<>();
         this.roundWinner = new ConcurrentHashMap<>();
         this.userMovement = new ConcurrentHashMap<>();
+        this.isSongPlaying = new ConcurrentHashMap<>();
     }
 
 }

@@ -262,4 +262,15 @@ public class RoomManager {
                         .build())
                 .build());
     }
+
+    public void updateIsSongPlaying(Long roomId) {
+        RoomInfo roomInfo = roomMap.get(roomId);
+        Map<Long, Boolean> isSongPlaying = roomInfo.getIsSongPlaying();
+        isSongPlaying.put(roomId, !isSongPlaying.getOrDefault(roomId, false));
+    }
+
+    public boolean getIsSongPlaying(Long roomId) {
+        RoomInfo roomInfo = roomMap.get(roomId);
+        return roomInfo.getIsSongPlaying().get(roomId);
+    }
 }
