@@ -423,21 +423,38 @@ public class GameService {
 
     public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
         // 채팅의 모든 공백 제거 및 대문자 치환
-        String message = chatRequest.getRequest().getMessage().replaceAll("\\s+", "").toUpperCase();
+        String userAnswer = extractAnswer(chatRequest.getRequest().getMessage());
 
-        int nowRound = roomManager.getCurrentRound(roomId);
-        // 한글/영어 이외의 문자가 나오면 자름. (ex. 러브일일구(러브119) -> 러브일일구)
-        // 공백 제거
-        String koreanAnswer = roomManager.getSong(roomId).getKorTitle().replaceAll("\\s+", "").replaceAll("[^가-힣].*", "");
-        // 영어는 대문자로 치환
+        String koreanAnswer = extractAnswer(roomManager.getSong(roomId).getKorTitle());
+        String koreanAnswerWithNumber = convertNumbersToKorean(koreanAnswer);
         String englishAnswer = roomManager.getSong(roomId).getEngTitle();
 
         // 영어 제목이 있는 노래인 경우 한글 제목과 영어 제목 둘 다 정답 처리
         if (englishAnswer != null) {
-            englishAnswer = englishAnswer.replaceAll("\\s+", "").replaceAll("[^a-zA-Z].*", "").toUpperCase();
-            return message.equals(koreanAnswer) || message.equals(englishAnswer);
+            englishAnswer = extractAnswer(englishAnswer);
+            return userAnswer.equals(koreanAnswer) || userAnswer.equals(koreanAnswerWithNumber) || userAnswer.equals(englishAnswer);
         }
-        return message.equals(koreanAnswer);
+        return userAnswer.equals(koreanAnswer) || userAnswer.equals(koreanAnswerWithNumber);
+    }
+
+    private String extractAnswer(String answer) {
+        return answer.replaceAll("\\s+", "")
+                .replaceAll("\\([^)]*\\)", "")
+                .replaceAll("[^가-힣a-zA-Z0-9]", "")
+                .toUpperCase();
+    }
+
+    private String convertNumbersToKorean(String text) {
+        return text.replaceAll("0", "영")
+                .replaceAll("1", "일")
+                .replaceAll("2", "이")
+                .replaceAll("3", "삼")
+                .replaceAll("4", "사")
+                .replaceAll("5", "오")
+                .replaceAll("6", "육")
+                .replaceAll("7", "칠")
+                .replaceAll("8", "팔")
+                .replaceAll("9", "구");
     }
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
