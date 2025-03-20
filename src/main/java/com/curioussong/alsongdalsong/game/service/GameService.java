@@ -255,16 +255,16 @@ public class GameService {
             String mover = userTurn.pop();
             while (userMovement.get(mover) > 0) {
                 String userWhoMove = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
-                sendUserPosition(destination, roomId, userWhoMove);
+                userMovement.put(mover, userMovement.get(mover) - 1);
+                // 말이 이동하는 사람들의 현재 위치(점수) 갱신
+                Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
+                scoreMap.compute(mover, (key, value) -> (value == null) ? 1 : value + 1); // 현재는 앞으로만 가고 다른 이벤트 없으므로 +1
+                sendUserPosition(destination, roomId, userWhoMove, scoreMap.get(userWhoMove));
                 try {
                     Thread.sleep(300);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                userMovement.put(mover, userMovement.get(mover) - 1);
-                // 말이 이동하는 사람들의 현재 위치(점수) 갱신
-                Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
-                scoreMap.compute(mover, (key, value) -> (value == null) ? 1 : value + 1); // 현재는 앞으로만 가고 다른 이벤트 없으므로 +1
                 // Todo : 특정 이벤트 발생 시, userTurn에 현재 사용자 추가 후 새로 움직일 사용자 추가. 새로 움직일 사용자 userMovement 갱신
             }
         }
@@ -324,12 +324,12 @@ public class GameService {
         messagingTemplate.convertAndSend(destination, timerResponse);
     }
 
-    private void sendUserPosition(String destination, Long roomId, String userWhoMove) {
+    private void sendUserPosition(String destination, Long roomId, String userWhoMove, Integer position) {
         MoveResponseDTO moveResponseDTO = MoveResponseDTO.builder()
                 .type("move")
                 .response(MoveResponse.builder()
                         .username(userWhoMove)
-                        .position(1)
+                        .position(position)
                         .build())
                 .build();
 
