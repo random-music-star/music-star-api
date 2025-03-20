@@ -260,7 +260,7 @@ public class GameService {
                 scoreMap.compute(mover, (key, value) -> (value == null) ? 1 : value + 1); // 현재는 앞으로만 가고 다른 이벤트 없으므로 +1
                 sendUserPosition(destination, roomId, userWhoMove, scoreMap.get(userWhoMove));
                 try {
-                    Thread.sleep(300);
+                    Thread.sleep(700);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
