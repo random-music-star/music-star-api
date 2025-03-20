@@ -66,7 +66,7 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
                             .build());
                     return;
                 }
-                roomService.joinRoom(roomId, userName);
+                roomService.joinRoom(roomId, sessionId, userName);
 //                log.info("Extracted Room ID: {}", roomId);
             }
             sendRoomInfoAndUserInfoToSubscriber(destination); // 방 입장 시, 해당 방에 입장한 사용자들에게 방 정보와 사용자 목록을 내려줌.

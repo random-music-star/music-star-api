@@ -3,7 +3,6 @@ package com.curioussong.alsongdalsong.game.service;
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
-import com.curioussong.alsongdalsong.game.domain.RoomInfo;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
@@ -34,28 +33,24 @@ import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
-import com.curioussong.alsongdalsong.room.domain.Room.RoomStatus;
 import com.curioussong.alsongdalsong.room.event.UserLeavedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
-import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
-import com.curioussong.alsongdalsong.roomgame.service.RoomGameService;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
+import com.curioussong.alsongdalsong.stomp.SessionRoomMap;
 import com.curioussong.alsongdalsong.util.KoreanConsonantExtractor;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.util.Pair;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -76,6 +71,7 @@ public class GameService {
     private final RoomGameRepository roomGameRepository;
 
     private final RoomManager roomManager;
+    private final SessionRoomMap sessionRoomMap;
 
     private ScheduledFuture<?> scheduledTask;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -523,6 +519,10 @@ public class GameService {
 //    Todo: 방에 입장 시 사용자 레디 상태를 false로 세팅, joinRoom 기능 개발 이후 점검 필요
     @EventListener
     public void handleUserJoinedEvent(UserJoinedEvent event) {
+        if (event.roomId() != null) {
+            sessionRoomMap.addSessionId(event.sessionId(), 1L, event.roomId(), event.username());
+        }
+
         Member member = memberService.getMemberByToken(event.username());
         // host는 방을 만들면서 status가 초기화 되어 있음.
         // host 외에 다른 사람이 방에 입장할 때 status 설정 해줘야 함.
@@ -544,6 +544,9 @@ public class GameService {
 
     @EventListener
     public void handleUserLeavedEvent(UserLeavedEvent event) {
+        if (sessionRoomMap.getSessionRoomMap().get(event.sessionId()) != null) {
+            sessionRoomMap.removeSessionId(event.sessionId());
+        }
         Member member = memberService.getMemberByToken(event.username());
         Room room = roomRepository.findById(event.roomId())
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));

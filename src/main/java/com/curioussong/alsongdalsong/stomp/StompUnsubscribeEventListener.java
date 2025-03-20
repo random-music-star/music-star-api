@@ -21,6 +21,7 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
     private final SimpMessagingTemplate messagingTemplate;
     private final RoomService roomService;
     private final GameService gameService;
+    private final SessionRoomMap sessionRoomMap;
 
     @Override
     public void onApplicationEvent(SessionUnsubscribeEvent event) {
@@ -34,23 +35,26 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
             userName = accessor.getNativeHeader("Authorization").get(0);
         }
 
-        log.info("Session {} unsubscribed from {}", sessionId, destination);
-
-        if (destination != null && destination.matches("^/topic/channel/\\d+/room/\\d+$")) {
-            Pattern pattern = Pattern.compile(".*/(\\d+)$");
-            Matcher matcher = pattern.matcher(destination);
-
-            if (matcher.find()) {
-                Long roomId = Long.valueOf(matcher.group(1));
-                log.info("User {} left room {}", userName, roomId);
-
-                // 사용자를 방에서 제거
-                roomService.leaveRoom(roomId, userName);
-
-                // 사용자 목록 갱신 및 알림 전송
-//                sendRoomInfoAndUserInfoToSubscribers(destination);
-            }
+        if (sessionRoomMap.getSessionRoomMap().get(sessionId) != null) {
+            log.info("leave room session {}", sessionId);
+            roomService.leaveRoom(sessionId);
         }
+
+//        if (destination != null && destination.matches("^/topic/channel/\\d+/room/\\d+$")) {
+//            Pattern pattern = Pattern.compile(".*/(\\d+)$");
+//            Matcher matcher = pattern.matcher(destination);
+//
+//            if (matcher.find()) {
+//                Long roomId = Long.valueOf(matcher.group(1));
+//                log.info("User {} left room {}", userName, roomId);
+//
+//                // 사용자를 방에서 제거
+//                roomService.leaveRoom(sessionId, roomId, userName);
+//
+//                // 사용자 목록 갱신 및 알림 전송
+////                sendRoomInfoAndUserInfoToSubscribers(destination);
+//            }
+//        }
     }
 
     public void sendRoomInfoAndUserInfoToSubscribers(String destination) {
