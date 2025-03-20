@@ -236,13 +236,38 @@ public class GameService {
             sendNextMessage(destination, roomId, isWinnerExist);
 
             if (isWinnerExist) {
-                sendUserPosition(destination, roomId); // 사용자 위치 정보 전송
-                scheduler.schedule(() -> startRound(channelId, roomId), 300, TimeUnit.MILLISECONDS);
+                handleSendingPositionMessage(destination, roomId);
+                startRound(channelId, roomId);
             } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
                 startRound(channelId, roomId);
             }
         } else {
             log.info("Pattern did not match destination: {}", destination);
+        }
+    }
+
+    private void handleSendingPositionMessage(String destination, Long roomId) {
+        Map<String, Integer> userMovement = roomManager.getRoomInfo(roomId).getUserMovement();
+        Stack<String> userTurn = new Stack<>();
+        String firstMover = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
+        userTurn.push(firstMover);
+
+        while (!userTurn.empty()) {
+            String mover = userTurn.pop();
+            while (userMovement.get(mover) > 0) {
+                String userWhoMove = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
+                sendUserPosition(destination, roomId, userWhoMove);
+                try {
+                    Thread.sleep(300);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                userMovement.put(mover, userMovement.get(mover) - 1);
+                // 말이 이동하는 사람들의 현재 위치(점수) 갱신
+                Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
+                scoreMap.compute(mover, (key, value) -> (value == null) ? 1 : value + 1); // 현재는 앞으로만 가고 다른 이벤트 없으므로 +1
+                // Todo : 특정 이벤트 발생 시, userTurn에 현재 사용자 추가 후 새로 움직일 사용자 추가. 새로 움직일 사용자 userMovement 갱신
+            }
         }
     }
 
@@ -298,14 +323,12 @@ public class GameService {
         messagingTemplate.convertAndSend(destination, timerResponse);
     }
 
-    private void sendUserPosition(String destination, Long roomId) {
-        String userWhoMove = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
-        Integer position = roomManager.getRoomInfo(roomId).getScore().get(userWhoMove);
+    private void sendUserPosition(String destination, Long roomId, String userWhoMove) {
         MoveResponseDTO moveResponseDTO = MoveResponseDTO.builder()
                 .type("move")
                 .response(MoveResponse.builder()
                         .username(userWhoMove)
-                        .position(position)
+                        .position(1)
                         .build())
                 .build();
 
@@ -397,10 +420,9 @@ public class GameService {
             return;
         }
 
-        // 정답자 점수 + 1
-        // 게임 시작 시 map을 clear 하므로, 사용자 이름으로 접근 시 null이면 1 할당, 아니면 +!
-        Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
-        scoreMap.compute(userName, (key, value) -> (value == null) ? 4 : value + 4);
+//      int scoreToAdd = calculateScore(); // 추후 구현
+        int scoreToAdd = 4;
+        roomManager.getRoomInfo(roomId).getUserMovement().put(userName, scoreToAdd); // 정답자 이동 예정 횟수 갱신
 
         // 방의 현재 라운드 정답자 저장
         Map<Long, String> roundWinner = roomManager.getRoomInfo(roomId).getRoundWinner();

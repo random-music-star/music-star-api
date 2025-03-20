@@ -4,10 +4,12 @@ import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
+import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.util.Pair;
@@ -29,6 +31,7 @@ public class RoomManager {
 
     private final SongService songService;
     private final RoomYearRepository roomYearRepository;
+    private final RoomRepository roomRepository;
     private final SimpMessagingTemplate messagingTemplate;
 
     // 방 정보 반환
@@ -130,10 +133,19 @@ public class RoomManager {
         // 라운드 초기화
         roomInfo.setCurrentRound(1);
 
-        // 사용자 점수 초기화
-        initializeScores(roomId);
-        // 정답자 초기화
-        initializeRoundWinner(roomId);
+
+        initializeScores(roomId); // 사용자 점수 초기화
+        initializeRoundWinner(roomId); // 정답자 초기화
+        initializeUserMovement(roomId); // 사용자 별 움직이는 거리 초기화
+    }
+
+    private void initializeUserMovement(Long roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+        Map<String, Integer> userMovement = getRoomInfo(roomId).getUserMovement();
+
+        room.getMembers().forEach(member -> {userMovement.put(member.getUsername(), 0);});
+
     }
 
     private void initializeRoundWinner(Long roomId) {

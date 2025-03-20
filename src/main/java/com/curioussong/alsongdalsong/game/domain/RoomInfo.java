@@ -22,7 +22,7 @@ public class RoomInfo {
     private List<Integer> selectedYears;
     private Map<String, Integer> score;
     private Map<Long, String> roundWinner; // 각 방의 현재 정답자 확인용
-
+    private Map<String, Integer> userMovement;
     private Map<Integer, Pair<GameMode, Song>> roundToInfo;
 
     // memberId에 따른 skip상태, ready상태
@@ -42,6 +42,7 @@ public class RoomInfo {
         this.memberSkipStatus = new ConcurrentHashMap<>();
         this.score = new ConcurrentHashMap<>();
         this.roundWinner = new ConcurrentHashMap<>();
+        this.userMovement = new ConcurrentHashMap<>();
     }
 
 }
