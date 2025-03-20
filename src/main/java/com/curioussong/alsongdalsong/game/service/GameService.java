@@ -331,6 +331,15 @@ public class GameService {
         messagingTemplate.convertAndSend(destination, moveResponseDTO);
     }
 
+    private void sendGameEndMessage(String destination, String finalWinner) {
+        messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
+                .type("gameEnd")
+                .response(GameEndResponse.builder()
+                        .winner(finalWinner)
+                        .build())
+                .build());
+    }
+
     @Transactional
     public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, Long roomId) {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
@@ -341,8 +350,8 @@ public class GameService {
     }
 
     private void sendRoomInfoToSubscriber(String destination, Room room) {
-        List<GameMode> gameModes = new ArrayList<>();
-        gameModes.add(GameMode.FULL);
+        // 방 정보 전송
+        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(room.getId());
 
         messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
                 .type("roomInfo")
@@ -567,21 +576,12 @@ public class GameService {
     private void endGame(Long roomId, String destination) {
         // 최고 점수 가진 플레이어 찾기
         String finalWinner = findWinnerByScore(roomId, 0);
-
         log.info("Game ended. Final winner: {}", finalWinner);
-
-        messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
-                .type("gameEnd")
-                .response(GameEndResponse.builder()
-                        .winner(finalWinner)
-                        .build())
-                .build());
-
+        sendGameEndMessage(destination, finalWinner);
 
         // 멤버 상태 초기화
         roomManager.initializeMemberStatus(roomId);
 
-        // 유저 정보 전송
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
 
@@ -599,37 +599,14 @@ public class GameService {
             userInfoList.add(userInfo);
         }
 
-        messagingTemplate.convertAndSend(destination, UserInfoResponseDTO
-                .builder()
-                .type("userInfo")
-                .response(UserInfoResponse.builder()
-                        .userInfoList(userInfoList)
-                        .allReady(false)
-                        .build())
-                .build());
+        scheduler.schedule(() -> {
+            eventPublisher.publishEvent(new GameStatusEvent(
+                    roomRepository.findById(roomId)
+                            .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다.")),
+                    "WAITING"));
 
-
-        // 방 정보 전송
-        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
-
-        messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
-                .type("roomInfo")
-                .response(RoomInfoResponse.builder()
-                        .roomTitle(room.getTitle())
-                        .maxPlayer(room.getMaxPlayer())
-                        .maxGameRound(room.getMaxGameRound())
-                        .hasPassword(room.getPassword()!=null&&!room.getPassword().isEmpty())
-                        .format(room.getFormat())
-                        .status(room.getStatus())
-                        .mode(gameModes)
-                        .selectedYear(roomManager.getSelectedYears(roomId))
-                        .build())
-                .build());
-
-        // 전체 게임 종료 시 3초 후 WAITING 상태로 변경
-        scheduler.schedule(() -> eventPublisher.publishEvent(new GameStatusEvent(
-                roomRepository.findById(roomId)
-                        .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다.")),
-                "WAITING")), 3, TimeUnit.SECONDS);
+            sendRoomInfoToSubscriber(destination, room);
+            sendUserInfoToSubscriber(destination, room);
+        }, 3, TimeUnit.SECONDS);
     }
 }
