@@ -157,16 +157,8 @@ public class GameService {
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
 
         log.debug("sendRoundInfo 호출됨 - destination: {}, roomId: {}", destination, roomId);
-        // 일단 첫번째 모드만 계속 선택
-//        RoomGame roomGame = roomGameRepository.findByRoom(room);
-//        log.info("roomGame: {}", roomGame.getGame());
-//        GameMode gameMode = roomGame.getGame().getMode();
-//        log.info("gameMode: {}", gameMode);
-//        Random random = new Random();
-//        GameMode selectedGameMode = gameModes.get(random.nextInt(gameModes.size()));
-//        log.info("선택된 게임 모드: {}", selectedGameMode);
 
-        log.info("build dto");
+        // Todo : 하드코딩된 gameMode를 사용자가 설정한 값으로 불러오도록 수정 필요
         RoundResponseDTO dto = RoundResponseDTO.builder()
                 .type("roundInfo")
                 .response(RoundResponse.builder()
@@ -240,6 +232,12 @@ public class GameService {
                 handleSendingPositionMessage(destination, roomId);
                 startRound(channelId, roomId);
             } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
+                sendGameResult(destination, roomId, roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId));
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
                 startRound(channelId, roomId);
             }
         } else {
@@ -398,6 +396,27 @@ public class GameService {
                 .build());
     }
 
+    private void sendGameResult(String destination, Long roomId, String userName) {
+        Song song = roomManager.getSong(roomId);
+        String koreanTitle = song.getKorTitle();
+        String englishTitle = song.getEngTitle();
+        StringBuilder title = new StringBuilder();
+        if (englishTitle != null) {
+            title.append(koreanTitle).append("(").append(englishTitle).append(")");
+        } else {
+            title.append(koreanTitle);
+        }
+        messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()
+                .type("gameResult")
+                .response(ResultResponse.builder()
+                        .winner(userName)
+                        .songTitle(title.toString())
+                        .singer(song.getArtist())
+                        .score(1)
+                        .build())
+                .build());
+    }
+
     public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
         // 채팅의 모든 공백 제거 및 대문자 치환
         String message = chatRequest.getRequest().getMessage().replaceAll("\\s+", "").toUpperCase();
@@ -435,24 +454,7 @@ public class GameService {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         cancelHintTimer(roomId);
 
-        Song song = roomManager.getSong(roomId);
-        String koreanTitle = song.getKorTitle();
-        String englishTitle = song.getEngTitle();
-        StringBuilder title = new StringBuilder();
-        if (englishTitle != null) {
-            title.append(koreanTitle).append("(").append(englishTitle).append(")");
-        } else {
-            title.append(koreanTitle);
-        }
-        messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()
-                        .type("gameResult")
-                        .response(ResultResponse.builder()
-                                .winner(userName)
-                                .songTitle(title.toString())
-                                .singer(song.getArtist())
-                                .score(1)
-                                .build())
-                .build());
+        sendGameResult(destination, roomId, userName);
     }
 
     @Transactional
