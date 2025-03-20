@@ -402,13 +402,13 @@ public class GameService {
         int nowRound = roomManager.getCurrentRound(roomId);
         // 한글/영어 이외의 문자가 나오면 자름. (ex. 러브일일구(러브119) -> 러브일일구)
         // 공백 제거
-        String koreanAnswer = roomManager.getSong(roomId).getKorTitle().replaceAll("[^가-힣].*", "").replaceAll("\\s+", "");
+        String koreanAnswer = roomManager.getSong(roomId).getKorTitle().replaceAll("\\s+", "").replaceAll("[^가-힣].*", "");
         // 영어는 대문자로 치환
         String englishAnswer = roomManager.getSong(roomId).getEngTitle();
 
         // 영어 제목이 있는 노래인 경우 한글 제목과 영어 제목 둘 다 정답 처리
         if (englishAnswer != null) {
-            englishAnswer = englishAnswer.replaceAll("[^a-zA-Z].*", "").replaceAll("\\s+", "").toUpperCase();
+            englishAnswer = englishAnswer.replaceAll("\\s+", "").replaceAll("[^a-zA-Z].*", "").toUpperCase();
             return message.equals(koreanAnswer) || message.equals(englishAnswer);
         }
         return message.equals(koreanAnswer);
