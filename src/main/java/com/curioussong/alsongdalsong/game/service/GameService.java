@@ -599,12 +599,11 @@ public class GameService {
             userInfoList.add(userInfo);
         }
 
+        eventPublisher.publishEvent(new GameStatusEvent(
+                roomRepository.findById(roomId)
+                        .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다.")),
+                "WAITING"));
         scheduler.schedule(() -> {
-            eventPublisher.publishEvent(new GameStatusEvent(
-                    roomRepository.findById(roomId)
-                            .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다.")),
-                    "WAITING"));
-
             sendRoomInfoToSubscriber(destination, room);
             sendUserInfoToSubscriber(destination, room);
         }, 3, TimeUnit.SECONDS);
