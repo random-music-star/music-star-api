@@ -127,7 +127,7 @@ public class RoomManager {
             Song song = selectedSongs.get(i);
 
             // RoomInfo의 roundToInfo 맵에 게임 모드와 노래 저장
-            roomInfo.getRoundToInfo().put(i, Pair.of(gameMode, song));
+            roomInfo.getRoundToInfo().put(i+1, Pair.of(gameMode, song));
         }
 
         // 라운드 초기화
