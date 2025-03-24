@@ -44,7 +44,22 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = accessor.getSessionId();
 
-        handleLeavingRoom(sessionId);
+        // 세션이 방에 연결되어 있는지 확인
+        if (sessionManager.getSessionRoomMap().containsKey(sessionId)) {
+            Map<String, Pair<Long, Long>> userSessionInfo = sessionManager.getSessionRoomMap().get(sessionId);
+            String userName = userSessionInfo.keySet().stream().findFirst().orElse(null);
+            Long channelId = userSessionInfo.get(userName).getFirst();
+            Long roomId = userSessionInfo.get(userName).getSecond();
+
+            // roomId가 -1L이 아니면 방에 있는 상태
+            if (roomId != -1L) {
+                log.debug("방 토픽 구독 해제 감지: 방ID={}, 사용자={}", roomId, userName);
+                // 방 나가기 처리
+                roomService.leaveRoom(roomId, userName);
+                sessionManager.removeSessionId(sessionId);
+                sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
+            }
+        }
     }
 
     private void handleLeavingRoom(String sessionId) {
@@ -54,9 +69,13 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
             Long channelId = userSessionInfo.get(userName).getFirst();
             Long roomId = userSessionInfo.get(userName).getSecond();
 
-            roomService.leaveRoom(roomId, userName);
-            sessionManager.removeSessionId(sessionId);
-            sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
+            // roomId가 -1L이 아닌 경우에만 방 나가기 처리
+            if (roomId != -1L) {
+                roomService.leaveRoom(roomId, userName);
+                // 채널은 유지하고 방만 나가는 경우 처리 (sessionManager 업데이트)
+                sessionManager.removeSessionId(sessionId);
+                sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
+            }
         }
     }
 

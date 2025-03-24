@@ -42,40 +42,53 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         String destination = accessor.getDestination();
         String sessionId = accessor.getSessionId(); // 각 클라이언트 연결 식별하는 고유 id
 
-        if (destination != null && sessionId != null && destination.matches("^/topic/channel/\\d+/room/\\d+$")) {
-            String userName = getUsernameFromHeader(accessor);
-            if (userName == null) {
-                // Todo : 헤더로 사용자 이름을 전달받지 못한 경우에 대한 예외 처리
-            }
-            log.info("username {}", userName);
+        if(destination == null || sessionId == null) {
+            return;
+        }
 
-            Pattern pattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
-            Matcher matcher = pattern.matcher(destination);
+        String userName = getUsernameFromHeader(accessor);
+        if(userName == null) {
+            // Todo : 헤더로 사용자 이름을 전달받지 못한 경우에 대한 예외 처리
+            return;
+        }
+        log.debug("username {}", userName);
 
-            if (matcher.find()) { //
-                Long channelId = Long.parseLong(matcher.group(1));
-                Long roomId = Long.parseLong(matcher.group(2));
-                log.info("room id {}, It's work when subscribe the topic", roomId);
-                // 방이 가득 찼거나, 게임 진행 중이면 참가 불가.
-                if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId)) {
-                    sendRefuseMessage(destination, userName);
-                    return;
-                }
-                roomService.joinRoom(roomId, sessionId, userName);
-                sessionManager.addSessionId(sessionId, channelId, roomId, userName);
-                sendRoomInfoAndUserInfoToSubscriber(destination); // 방 입장 시, 해당 방에 입장한 사용자들에게 방 정보와 사용자 목록을 내려줌.
+        // 채널 토픽 구독 패턴 (예: /topic/channel/1)
+        Pattern channelPattern = Pattern.compile("^/topic/channel/(\\d+)$");
+        Matcher channelMatcher = channelPattern.matcher(destination);
+
+        // 방 토픽 구독 패턴 (예: /topic/channel/1/room/2)
+        Pattern roomPattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
+        Matcher roomMatcher = roomPattern.matcher(destination);
+
+        if (channelMatcher.find()) {
+            Long channelId = Long.parseLong(channelMatcher.group(1));
+            log.debug("channel id {}, 채널 토픽 구독", channelId);
+
+            // 채널 입장을 위한 세션 정보 등록 (roomId는 -1로)
+            sessionManager.addSessionId(sessionId, channelId, -1L, userName);
+        }
+
+        // 방 토픽 구독인 경우 (방 입장)
+        else if (roomMatcher.find()) {
+            Long channelId = Long.parseLong(roomMatcher.group(1));
+            Long roomId = Long.parseLong(roomMatcher.group(2));
+
+            log.debug("room id {}, It's work when subscribe the topic", roomId);
+
+            // 방이 가득 찼거나, 게임 진행 중이면 참가 불가
+            if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId)) {
+                sendRefuseMessage(destination, userName);
+                return;
             }
+            roomService.joinRoom(roomId, sessionId, userName);
+            sessionManager.addSessionId(sessionId, channelId, roomId, userName);
+            sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
         }
     }
 
-    public void sendRoomInfoAndUserInfoToSubscriber(String destination) {
-        Pattern pattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
-        Matcher matcher = pattern.matcher(destination);
-        if (matcher.matches()) {
-            Long channelId = Long.parseLong(matcher.group(1));
-            Long roomId = Long.parseLong(matcher.group(2));
-            gameService.sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
-        }
+    public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, Long roomId) {
+        gameService.sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
     }
 
     private String getUsernameFromHeader(StompHeaderAccessor accessor) {

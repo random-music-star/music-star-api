@@ -91,20 +91,28 @@ public class RoomService {
 
     @Transactional
     public void leaveRoom(Long roomId, String userName) {
+        log.debug("방 나가기 시작 - roomId: {}, userName: {}", roomId, userName);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
 
+        log.debug("방 나가기 전 멤버 수: {}", room.getMembers().size());
+        log.debug("방 멤버 목록: {}", room.getMembers().stream().map(Member::getUsername).toList());
+
         Member member = memberRepository.findByUsername(userName);
+        log.debug("나가는 멤버: {}", member.getUsername());
 
         if (isHostLeaving(room, member)) {
             delegateHost(room, member);
         }
 
         room.removeMember(member);
+        log.debug("방 나가기 후 멤버 수: {}", room.getMembers().size());
+        log.debug("방 멤버 목록 (나간 후): {}", room.getMembers().stream().map(Member::getUsername).toList());
         roomManager.getSkipStatus(roomId).remove(member.getId());
         roomManager.getReadyStatus(roomId).remove(member.getId());
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room));
+        log.debug("이벤트 발행 완료");
     }
 
     private boolean isHostLeaving(Room room, Member member) {
@@ -153,8 +161,6 @@ public class RoomService {
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room));
     }
-
-
 
     @Transactional(readOnly=true)
     public Page<RoomDTO> getRooms(int page, int size) {
