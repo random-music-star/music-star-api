@@ -11,7 +11,7 @@ import java.util.Map;
 @Component
 @Getter
 @Setter
-public class SessionRoomMap {
+public class SessionManager {
     private Map<String, Map<String, Pair<Long, Long>>> sessionRoomMap = new HashMap<>(); // {세션 ID : {사용자 이름 : {채널 ID, 방 ID}}}
 
     public void addSessionId(String sessionId, Long channelId, Long roomId, String username) {

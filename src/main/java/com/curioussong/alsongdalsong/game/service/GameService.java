@@ -33,12 +33,11 @@ import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
-import com.curioussong.alsongdalsong.room.event.UserLeavedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
-import com.curioussong.alsongdalsong.stomp.SessionRoomMap;
+import com.curioussong.alsongdalsong.stomp.SessionManager;
 import com.curioussong.alsongdalsong.util.KoreanConsonantExtractor;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -71,7 +70,7 @@ public class GameService {
     private final RoomGameRepository roomGameRepository;
 
     private final RoomManager roomManager;
-    private final SessionRoomMap sessionRoomMap;
+    private final SessionManager sessionManager;
 
     private ScheduledFuture<?> scheduledTask;
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
@@ -545,10 +544,6 @@ public class GameService {
 //    Todo: 방에 입장 시 사용자 레디 상태를 false로 세팅, joinRoom 기능 개발 이후 점검 필요
     @EventListener
     public void handleUserJoinedEvent(UserJoinedEvent event) {
-        if (event.roomId() != null) {
-            sessionRoomMap.addSessionId(event.sessionId(), 1L, event.roomId(), event.username());
-        }
-
         Member member = memberService.getMemberByToken(event.username());
         // host는 방을 만들면서 status가 초기화 되어 있음.
         // host 외에 다른 사람이 방에 입장할 때 status 설정 해줘야 함.
@@ -568,17 +563,6 @@ public class GameService {
                 .orElseThrow(() -> new RuntimeException("Game with mode " + mode + " not found"));
     }
 
-    @EventListener
-    public void handleUserLeavedEvent(UserLeavedEvent event) {
-        if (sessionRoomMap.getSessionRoomMap().get(event.sessionId()) != null) {
-            sessionRoomMap.removeSessionId(event.sessionId());
-        }
-        Member member = memberService.getMemberByToken(event.username());
-        Room room = roomRepository.findById(event.roomId())
-                .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
-        room.removeMember(member);
-        roomManager.deleteMember(event.roomId(), member.getId());
-    }
 
     // 최고 점수를 가진 플레이어 찾기
     private String findWinnerByScore(Long roomId, int minScore) {

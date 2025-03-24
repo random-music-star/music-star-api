@@ -9,13 +9,12 @@ import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.*;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
 import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
-import com.curioussong.alsongdalsong.room.event.UserLeavedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
-import com.curioussong.alsongdalsong.stomp.SessionRoomMap;
+import com.curioussong.alsongdalsong.stomp.SessionManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,15 +22,11 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
@@ -45,7 +40,7 @@ public class RoomService {
     private final RoomYearRepository roomYearRepository;
     private final RoomGameRepository roomGameRepository;
     private final RoomManager roomManager;
-    private final SessionRoomMap sessionRoomMap;
+    private final SessionManager sessionManager;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -90,18 +85,11 @@ public class RoomService {
         room.addMember(member);
 
         eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), sessionId, userName));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
     }
 
     @Transactional
-    public void leaveRoom(String sessionId) {
-        Map.Entry<String, Pair<Long, Long>> entry = sessionRoomMap.getSessionRoomMap().get(sessionId)
-                .entrySet()
-                .stream()
-                .findFirst()
-                .orElse(null);
-        String userName = entry.getKey();
-        Long roomId = entry.getValue().getSecond();
-
+    public void leaveRoom(Long roomId, String userName) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
 
@@ -109,7 +97,7 @@ public class RoomService {
 
         room.removeMember(member);
 
-        eventPublisher.publishEvent(new UserLeavedEvent(sessionId, room.getId(), userName));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
     }
 
     @Transactional
