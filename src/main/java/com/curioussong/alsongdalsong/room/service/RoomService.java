@@ -1,6 +1,7 @@
 package com.curioussong.alsongdalsong.room.service;
 
 import com.curioussong.alsongdalsong.game.domain.Game;
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
@@ -133,7 +134,20 @@ public class RoomService {
             throw new IllegalArgumentException("방 설정은 방장만 변경 가능합니다.");
         }
 
+        roomGameRepository.deleteAllByRoom(room);
+        List<Game> games = request.getGameModes().stream()
+                .map(gameMode -> gameRepository.findByMode(gameMode)
+                        .orElseThrow(()-> new EntityNotFoundException("해당하는 게임이 없습니다.")))
+                .toList();
+
+        games.forEach(game -> roomGameRepository.save(new RoomGame(game, room)));
+
         room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
+
+        roomYearRepository.deleteAllByRoom(room);
+        request.getSelectedYears().forEach(year ->
+                roomYearRepository.save(new RoomYear(room, year))
+        );
 
         roomManager.updateRoomInfo(room, request.getSelectedYears());
 
@@ -173,7 +187,9 @@ public class RoomService {
         Page<RoomDTO> roomPage = getRooms(0, 8);
 
         for (RoomDTO roomDTO : roomPage.getContent()) {
-            roomDTO.setGameModes(List.of("FULL"));
+            Long roomId = roomDTO.getId();
+            List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
+            roomDTO.setGameModes(gameModes);
         }
 
         return LobbyResponse.builder()

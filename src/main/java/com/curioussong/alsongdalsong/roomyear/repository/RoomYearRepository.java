@@ -9,4 +9,6 @@ import java.util.List;
 public interface RoomYearRepository extends JpaRepository<RoomYear, Long> {
 
     List<RoomYear> findAllByRoom(Room room);
+
+    void deleteAllByRoom(Room room);
 }

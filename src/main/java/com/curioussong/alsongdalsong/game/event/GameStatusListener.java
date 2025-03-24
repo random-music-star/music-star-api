@@ -1,14 +1,14 @@
 package com.curioussong.alsongdalsong.game.event;
 
 import com.curioussong.alsongdalsong.common.sse.SseEmitterManager;
-import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
+import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,6 +23,7 @@ public class GameStatusListener {
 
     private final RoomRepository roomRepository;
     private final SseEmitterManager sseEmitterManager;
+    private final RoomGameRepository roomGameRepository;
 
     @EventListener
     @Transactional
@@ -46,7 +47,8 @@ public class GameStatusListener {
     private void sendRoomUpdateToClients(Room room) {
         Map<String, Object> data = new HashMap<>();
         RoomDTO roomDTO = room.toDto();
-        roomDTO.setGameModes(List.of("FULL"));
+        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomDTO.getId());
+        roomDTO.setGameModes(gameModes);
 
         data.put("room", roomDTO);
         data.put("actionType", "UPDATED");

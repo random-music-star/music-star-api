@@ -5,6 +5,7 @@ import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
+import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
@@ -16,9 +17,9 @@ import org.springframework.data.util.Pair;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -33,6 +34,7 @@ public class RoomManager {
     private final RoomYearRepository roomYearRepository;
     private final RoomRepository roomRepository;
     private final SimpMessagingTemplate messagingTemplate;
+    private final RoomGameRepository roomGameRepository;
 
     // 방 정보 반환
     public RoomInfo getRoomInfo(Long roomId) {
@@ -122,8 +124,11 @@ public class RoomManager {
         RoomInfo roomInfo = roomMap.get(roomId);
         int maxRound = roomInfo.getMaxGameRound();
         List<Song> selectedSongs = songService.getRandomSongByYear(roomInfo.getSelectedYears(), maxRound);
+        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
+        Random random = new Random();
         for (int i = 0; i < maxRound; i++) {
-            GameMode gameMode = GameMode.FULL;  // 현재는 FULL 모드만 사용
+            int randomIndex = random.nextInt(gameModes.size());
+            GameMode gameMode = gameModes.get(randomIndex);
             Song song = selectedSongs.get(i);
 
             // RoomInfo의 roundToInfo 맵에 게임 모드와 노래 저장
@@ -244,8 +249,7 @@ public class RoomManager {
 
 
         String destination = String.format("/topic/channel/%d/room/%d", roomInfo.getChannelId(), roomId);
-        List<GameMode> gameModes = new ArrayList<>();
-        gameModes.add(GameMode.FULL);
+        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
 
 
         messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()

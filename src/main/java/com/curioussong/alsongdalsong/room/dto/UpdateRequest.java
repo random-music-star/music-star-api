@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.room.dto;
 
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -12,6 +13,6 @@ public class UpdateRequest {
     private String title;
     private String format;
     private String password;
-    private List<String> gameModes;
+    private List<GameMode> gameModes;
     private List<Integer> selectedYears;
 }

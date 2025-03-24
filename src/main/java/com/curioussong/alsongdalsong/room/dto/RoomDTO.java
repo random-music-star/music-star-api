@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.room.dto;
 
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -18,9 +19,9 @@ public class RoomDTO {
     private Integer playTime;
     private String status;
     private boolean hasPassword;
-    private List<String> gameModes;
+    private List<GameMode> gameModes;
 
-    public RoomDTO setGameModes(List<String> gameModes) {
+    public RoomDTO setGameModes(List<GameMode> gameModes) {
         this.gameModes = gameModes;
         return this;
     }

@@ -1,8 +1,9 @@
 package com.curioussong.alsongdalsong.room.event;
 
 import com.curioussong.alsongdalsong.common.sse.SseEmitterManager;
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
-import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
+import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -20,6 +21,7 @@ import java.util.Map;
 public class RoomEventListener {
 
     private final SseEmitterManager sseEmitterManager;
+    private final RoomGameRepository roomGameRepository;
 
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -31,7 +33,8 @@ public class RoomEventListener {
 
         if (event.actionType() != RoomUpdatedEvent.ActionType.DELETED) {
             RoomDTO roomDTO = event.room().toDto();
-            roomDTO.setGameModes(List.of("FULL"));
+            List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomDTO.getId());
+            roomDTO.setGameModes(gameModes);
             data.put("room", roomDTO);
         } else {
             data.put("roomId", event.room().getId());
