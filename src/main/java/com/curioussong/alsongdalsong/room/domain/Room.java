@@ -114,4 +114,8 @@ public class Room {
         members.remove(member);
         member.setRoom(null);
     }
+
+    public void updateHost(Member member) {
+        this.host = member;
+    }
 }

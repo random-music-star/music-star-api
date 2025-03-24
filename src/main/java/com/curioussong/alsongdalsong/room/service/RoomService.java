@@ -95,9 +95,30 @@ public class RoomService {
 
         Member member = memberRepository.findByUsername(userName);
 
+        if (isHostLeaving(room, member)) {
+            delegateHost(room, member);
+        }
+
         room.removeMember(member);
+        roomManager.getSkipStatus(roomId).remove(member.getId());
+        roomManager.getReadyStatus(roomId).remove(member.getId());
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room));
+    }
+
+    private boolean isHostLeaving(Room room, Member member) {
+        return member.getId().equals(room.getHost().getId());
+    }
+
+    private void delegateHost(Room room, Member member) {
+        List<Member> members = room.getMembers();
+        members.remove(member);
+        if (!members.isEmpty()) {
+            Member newHost = members.get(0);
+            room.updateHost(newHost);
+        } else {
+            // Todo : 방에 남은 인원이 없을 시 방 삭제
+        }
     }
 
     @Transactional

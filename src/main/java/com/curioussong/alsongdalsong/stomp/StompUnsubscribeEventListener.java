@@ -29,6 +29,7 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
 
     @EventListener
     public void handleSessionDisconnect(SessionDisconnectEvent event) {
+        log.info("Session disconnect event: {}", event);
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = accessor.getSessionId();
 
@@ -39,6 +40,7 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
 
     @Override
     public void onApplicationEvent(SessionUnsubscribeEvent event) {
+        log.info("Unsubscribe: {}", event);
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(event.getMessage());
         String sessionId = accessor.getSessionId();
 
