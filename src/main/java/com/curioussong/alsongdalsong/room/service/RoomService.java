@@ -114,7 +114,7 @@ public class RoomService {
         roomManager.getSkipStatus(roomId).remove(member.getId());
         roomManager.getReadyStatus(roomId).remove(member.getId());
 
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room, RoomUpdatedEvent.ActionType.DELETED));
         log.debug("이벤트 발행 완료");
     }
 

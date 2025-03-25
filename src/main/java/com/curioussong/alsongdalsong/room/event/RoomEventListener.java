@@ -37,6 +37,7 @@ public class RoomEventListener {
             roomDTO.setGameModes(gameModes);
             data.put("room", roomDTO);
         } else {
+            log.info("방 삭제 이벤트 발생");
             data.put("roomId", event.room().getId());
         }
 
