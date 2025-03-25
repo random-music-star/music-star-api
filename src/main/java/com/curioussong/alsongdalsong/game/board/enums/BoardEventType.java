@@ -10,22 +10,21 @@ import java.util.concurrent.ThreadLocalRandom;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public enum BoardEventType {
 
-    PLUS(15, false),
-    MINUS(15, false),
-    PULL(10, true),
-    NOTHING(10, false),
-    BOMB(10, false),
-    OVERLAP(0, true),
-    CLOVER(10, false),
-    SWAP(10, true),
-    WARP(10, false),
-    MAGNET(10, true);
+    PLUS(30, false),
+    MINUS(30, false),
+    PULL(40, true),
+    NOTHING(0, false),
+    BOMB(0, false),
+    CLOVER(0, false),
+    SWAP(0, true),
+    WARP(0, false),
+    MAGNET(0, true);
 
     private final int probability;
     private final boolean hasTarget;
 
-    public static boolean getHasTarget(BoardEventType eventType) {
-        return eventType.hasTarget;
+    public boolean hasTarget() {
+        return this.hasTarget;
     }
 
     public static BoardEventType getRandomEventType() {

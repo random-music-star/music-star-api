@@ -2,17 +2,17 @@ package com.curioussong.alsongdalsong.game.service;
 
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.board.BoardEventHandler;
-import com.curioussong.alsongdalsong.game.board.enums.BoardEventType;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
+import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
-import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
+import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,13 +22,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Stack;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -195,21 +190,13 @@ public class GameService {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-                // Todo : 특정 이벤트 발생 시, userTurn에 현재 사용자 추가 후 새로 움직일 사용자 추가. 새로 움직일 사용자 userMovement 갱신
+
+
             }
         }
-
-        // 일단 이벤트 무조건 발생
-        // eventTrigger 메시지 전달 -> 1초 대기 -> event 메시지 전달 -> move 메시지 전달
-        // eventTrigger 전달
-        gameMessageSender.sendEventTrigger(destination, firstMover);
-        // 1초 대기
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-        boardEventHandler.handleBoardEvent(BoardEventType.PULL, firstMover, roomId, destination, positionBeforeMove);
+        // 이벤트 생성 및 처리
+        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(firstMover);
+        boardEventHandler.handleEvent(destination, roomId, eventResponse);
     }
 
     private void sendQuizInfo(String destination, Long roomId) {

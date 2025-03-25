@@ -1,11 +1,10 @@
 package com.curioussong.alsongdalsong.game.messaging;
 
-import com.curioussong.alsongdalsong.game.board.enums.BoardEventType;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
-import com.curioussong.alsongdalsong.game.dto.event.EventResponse;
-import com.curioussong.alsongdalsong.game.dto.event.EventResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.eventtrigger.EventTriggerResponse;
-import com.curioussong.alsongdalsong.game.dto.eventtrigger.EventTriggerResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.board.EventEndResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.board.EventTriggerResponse;
+import com.curioussong.alsongdalsong.game.dto.board.EventTriggerResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
@@ -183,17 +182,26 @@ public class GameMessageSender {
                 .build());
     }
 
-    public void sendEventTrigger(String destination, String triggerUser) {
-        messagingTemplate.convertAndSend(destination, EventTriggerResponseDTO.builder()
-                        .type("eventTrigger")
-                        .response(new EventTriggerResponse(triggerUser))
-                .build());
+    public void sendBoardEventMessage(String destination, BoardEventResponseDTO eventResponseDTO) {
+        messagingTemplate.convertAndSend(destination, eventResponseDTO);
     }
 
-    public void sendEvent(String destination, BoardEventType eventType, String triggerUser, String targetUser) {
-        messagingTemplate.convertAndSend(destination, EventResponseDTO.builder()
-                        .type("event")
-                        .response(new EventResponse(eventType, triggerUser, targetUser))
-                .build());
+    public void sendEventTrigger(String destination, String trigger) {
+        EventTriggerResponse triggerResponse = EventTriggerResponse.builder()
+                .trigger(trigger)
+                .build();
+
+        EventTriggerResponseDTO responseDTO = EventTriggerResponseDTO.builder()
+                .response(triggerResponse)
+                .build();
+
+        messagingTemplate.convertAndSend(destination, responseDTO);
+        log.debug("Event trigger message sent for user: {}", trigger);
+    }
+
+    public void sendEventEnd(String destination) {
+        EventEndResponseDTO responseDTO = EventEndResponseDTO.builder().build();
+        messagingTemplate.convertAndSend(destination, responseDTO);
+        log.debug("Event end message sent");
     }
 }
