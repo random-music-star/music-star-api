@@ -9,8 +9,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
@@ -61,13 +59,13 @@ public class BoardEventHandler {
 
             log.info("Event triggered: type={}, trigger={}", eventType, trigger);
 
-            // 3. 이벤트 효과 적용 (move 메시지 전송 포함)
-            applyEventEffect(destination, roomId, eventType, trigger);
+            // 3. 이벤트 종료 메시지 전송
+            gameMessageSender.sendEventEnd(destination);
 
             Thread.sleep(1500);
 
-            // 4. 이벤트 종료 메시지 전송
-            gameMessageSender.sendEventEnd(destination);
+            // 4. 이벤트 효과 적용 (move 메시지 전송 포함)
+            applyEventEffect(destination, roomId, eventType, trigger);
 
             Thread.sleep(1500);
 
@@ -91,7 +89,7 @@ public class BoardEventHandler {
                     break;
 
                 case PULL:
-                    handlePullEvent(eventType, trigger, roomId, destination);
+                    handlePullEvent(trigger, roomId, destination);
                 case NOTHING:
                 default:
                     log.info("No effect for user {}", trigger);
@@ -125,7 +123,7 @@ public class BoardEventHandler {
         gameMessageSender.sendUserPosition(destination, trigger, newPosition);
     }
 
-    private void handlePullEvent(BoardEventType eventType, String triggerUser, Long roomId, String destination) {
+    private void handlePullEvent(String triggerUser, Long roomId, String destination) {
         Random random = new Random();
         //        int randomInt = random.nextInt(2);
         int randomInt = 1;
