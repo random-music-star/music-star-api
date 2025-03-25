@@ -1,6 +1,11 @@
 package com.curioussong.alsongdalsong.game.messaging;
 
+import com.curioussong.alsongdalsong.game.board.enums.BoardEventType;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
+import com.curioussong.alsongdalsong.game.dto.event.EventResponse;
+import com.curioussong.alsongdalsong.game.dto.event.EventResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.eventtrigger.EventTriggerResponse;
+import com.curioussong.alsongdalsong.game.dto.eventtrigger.EventTriggerResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
@@ -178,5 +183,17 @@ public class GameMessageSender {
                 .build());
     }
 
+    public void sendEventTrigger(String destination, String triggerUser) {
+        messagingTemplate.convertAndSend(destination, EventTriggerResponseDTO.builder()
+                        .type("eventTrigger")
+                        .response(new EventTriggerResponse(triggerUser))
+                .build());
+    }
 
+    public void sendEvent(String destination, BoardEventType eventType, String triggerUser, String targetUser) {
+        messagingTemplate.convertAndSend(destination, EventResponseDTO.builder()
+                        .type("event")
+                        .response(new EventResponse(eventType, triggerUser, targetUser))
+                .build());
+    }
 }
