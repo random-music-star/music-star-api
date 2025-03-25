@@ -129,7 +129,8 @@ public class RoomService {
             Member newHost = members.get(0);
             room.updateHost(newHost);
         } else {
-            // Todo : 방에 남은 인원이 없을 시 방 삭제
+            // 방 삭제
+            room.updateStatus(Room.RoomStatus.FINISHED);
         }
     }
 
