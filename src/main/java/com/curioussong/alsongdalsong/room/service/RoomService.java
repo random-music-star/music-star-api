@@ -102,14 +102,14 @@ public class RoomService {
         Member member = memberRepository.findByUsername(userName)
                 .orElseThrow(() -> new EntityNotFoundException("해당 회원이 없습니다."));
 
-        log.debug("나가는 멤버: {}", member.getUsername());
+        log.info("나가는 멤버: {}", member.getUsername());
 
         if (isHostLeaving(room, member)) {
             delegateHost(room, member);
         }
 
         room.removeMember(member);
-        log.debug("방 나가기 후 멤버 수: {}", room.getMembers().size());
+        log.info("방 나가기 후 멤버 수: {}", room.getMembers().size());
         log.debug("방 멤버 목록 (나간 후): {}", room.getMembers().stream().map(Member::getUsername).toList());
         roomManager.getSkipStatus(roomId).remove(member.getId());
         roomManager.getReadyStatus(roomId).remove(member.getId());

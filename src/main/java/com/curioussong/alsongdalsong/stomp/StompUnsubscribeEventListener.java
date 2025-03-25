@@ -53,7 +53,7 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
 
             // roomId가 -1L이 아니면 방에 있는 상태
             if (roomId != -1L) {
-                log.debug("방 토픽 구독 해제 감지: 방ID={}, 사용자={}", roomId, userName);
+                log.info("방 토픽 구독 해제 감지: 방ID={}, 사용자={}", roomId, userName);
                 // 방 나가기 처리
                 roomService.leaveRoom(roomId, userName);
                 sessionManager.removeSessionId(sessionId);
