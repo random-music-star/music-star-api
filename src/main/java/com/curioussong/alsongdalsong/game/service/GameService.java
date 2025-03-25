@@ -1,50 +1,22 @@
 package com.curioussong.alsongdalsong.game.service;
 
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
-import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
-import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
-import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
-import com.curioussong.alsongdalsong.game.dto.hint.HintResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.move.MoveResponse;
-import com.curioussong.alsongdalsong.game.dto.move.MoveResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.next.NextResponse;
-import com.curioussong.alsongdalsong.game.dto.next.NextResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponse;
-import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.result.ResultResponse;
-import com.curioussong.alsongdalsong.game.dto.result.ResultResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
-import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.round.RoundResponse;
-import com.curioussong.alsongdalsong.game.dto.round.RoundResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.skip.SkipResponse;
-import com.curioussong.alsongdalsong.game.dto.skip.SkipResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.timer.Response;
-import com.curioussong.alsongdalsong.game.dto.timer.TimerResponse;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
-import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponse;
-import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
-import com.curioussong.alsongdalsong.game.repository.GameRepository;
+import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
+import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
+import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
-import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
-import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
-import com.curioussong.alsongdalsong.song.service.SongService;
-import com.curioussong.alsongdalsong.stomp.SessionManager;
-import com.curioussong.alsongdalsong.util.KoreanConsonantExtractor;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.event.EventListener;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,31 +25,18 @@ import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class GameService {
 
-    private final Integer CONSONANT_HINT_TIME = 15;
-    private final Integer SINGER_HINT_TIME = 30;
-
-    private final SimpMessagingTemplate messagingTemplate;
     private final MemberService memberService;
-    private final GameRepository gameRepository;
     private final RoomRepository roomRepository;
     private final ApplicationEventPublisher eventPublisher;
-    private final SongService songService;
-    private final RoomGameRepository roomGameRepository;
 
     private final RoomManager roomManager;
-    private final SessionManager sessionManager;
-
-    private ScheduledFuture<?> scheduledTask;
-    private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-    private Map<Long, ScheduledExecutorService> roomConsonantHintTimerSchedulers = new ConcurrentHashMap<>(); // 방별 힌트 타이머 스케줄러
-    private Map<Long, ScheduledExecutorService> roomSingerHintTimerSchedulers = new ConcurrentHashMap<>(); // 방별 힌트 타이머 스케줄러
-    private Map<Long, ScheduledExecutorService> roomRoundTimerSchedulers = new ConcurrentHashMap<>(); // 방별 라운드 타이머 스케줄러
-    private final Map<Long, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>(); // 방별 타이머 스케줄러
+    private final GameMessageSender gameMessageSender;
+    private final GameTimerManager gameTimerManager;
 
     @Transactional
     public void startGame(Long channelId, Long roomId) {
@@ -91,7 +50,9 @@ public class GameService {
         log.debug("All players are ready, proceeding to start the game.");
         eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
-        sendRoomInfoToSubscriber(destination, room);
+
+        gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
+
         roomManager.initializeGameSetting(roomId);
         startRound(channelId, roomId);
 
@@ -122,9 +83,7 @@ public class GameService {
             return;
         }
 
-        roomConsonantHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
-        roomSingerHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
-        roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
+        gameTimerManager.initializeSchedulers(roomId);
 
         roomManager.getRoomInfo(roomId).getRoundWinner().put(roomId, ""); // 라운드 시작 시 현재 라운드 정답자 초기화
 
@@ -141,68 +100,28 @@ public class GameService {
         roomManager.initializeSkipStatus(roomId);
 
         log.info("{} 번째 라운드 정보 전송", roomManager.getCurrentRound(roomId));
-        sendRoundInfo(destination, roomId);
 
+        log.debug("sendRoundInfo 호출됨 - destination: {}, roomId: {}", destination, roomId);
+        // Todo : 하드코딩된 gameMode를 사용자가 설정한 값으로 불러오도록 수정 필요
+        gameMessageSender.sendRoundInfo(destination, roomManager.getCurrentRound(roomId), GameMode.FULL);
+
+        log.debug("sendRoundInfo 메시지 전송 완료 - round: {}", roomManager.getCurrentRound(roomId));
         log.info("카운트 다운 시작");
         startCountdown(destination, roomId);
     }
 
-    public void sendRoundInfo(String destination, Long roomId) {
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-
-        log.debug("sendRoundInfo 호출됨 - destination: {}, roomId: {}", destination, roomId);
-
-        // Todo : 하드코딩된 gameMode를 사용자가 설정한 값으로 불러오도록 수정 필요
-        RoundResponseDTO dto = RoundResponseDTO.builder()
-                .type("roundInfo")
-                .response(RoundResponse.builder()
-                                .mode(GameMode.FULL)
-                                .round(roomManager.getCurrentRound(roomId))
-                                .build()).build();
-        log.info("roundInfo: {}", dto.getResponse().getRound());
-        messagingTemplate.convertAndSend(destination, RoundResponseDTO.builder()
-                        .type("roundInfo")
-                        .response(RoundResponse.builder()
-                                .mode(GameMode.FULL)
-                                .round(roomManager.getCurrentRound(roomId))
-                                .build())
-                .build());
-        log.debug("sendRoundInfo 메시지 전송 완료 - round: {}", roomManager.getCurrentRound(roomId));
-    }
-
     public void startCountdown(String destination, Long roomId) {
-        new Thread(() -> {
-            try {
-                for (int i = 3; i > 0; i--) {
-                    sendCountdown(destination, i);
-                    Thread.sleep(1000);
-                }
-                sendCountdown(destination, 0);
-                countSongPlayTime(destination, roomManager.getSong(roomId).getPlayTime(), roomId);
-                roomManager.initAnswer(roomId);
-                sendQuizInfo(destination, roomId);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }).start();
-    }
-
-    private void countSongPlayTime(String destination, int waitTimeInSeconds, Long roomId) {
-        roomConsonantHintTimerSchedulers.get(roomId).schedule(() -> sendConsonantHint(destination, roomId), CONSONANT_HINT_TIME, TimeUnit.SECONDS);
-        roomSingerHintTimerSchedulers.get(roomId).schedule(() -> sendSingerHint(destination, roomId), SINGER_HINT_TIME, TimeUnit.SECONDS);
-        roomRoundTimerSchedulers.get(roomId).schedule(() -> triggerEndEvent(destination), waitTimeInSeconds, TimeUnit.SECONDS);
-    }
-
-    public void cancelHintTimer(Long roomId) {
-        roomConsonantHintTimerSchedulers.get(roomId).shutdownNow();
-        roomSingerHintTimerSchedulers.get(roomId).shutdownNow();
-
-    }
-
-    public void cancelRoundTimerAndTriggerImmediately(String destination, Long roomId) {
-        roomRoundTimerSchedulers.get(roomId).shutdownNow();
-        triggerEndEvent(destination);
+        gameTimerManager.startCountdown(destination, roomId, () -> {
+            // 카운트다운 완료 후 실행될 코드
+            gameTimerManager.scheduleSongPlayTime(
+                    destination,
+                    roomManager.getSong(roomId).getPlayTime(),
+                    roomId,
+                    () -> triggerEndEvent(destination)
+            );
+            roomManager.initAnswer(roomId);
+            sendQuizInfo(destination, roomId);
+        });
     }
 
     private void triggerEndEvent(String destination) {
@@ -220,7 +139,10 @@ public class GameService {
             roomManager.updateIsSongPlaying(roomId);
 
             boolean isWinnerExist = !roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId).isEmpty();
-            sendNextMessage(destination, roomId, isWinnerExist);
+
+            gameMessageSender.sendNextMessage(destination,
+                    roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId),
+                    isWinnerExist ? 4 : 0);
 
             if (isWinnerExist) {
                 handleSendingPositionMessage(destination, roomId);
@@ -253,7 +175,9 @@ public class GameService {
                 // 말이 이동하는 사람들의 현재 위치(점수) 갱신
                 Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
                 scoreMap.compute(mover, (key, value) -> (value == null) ? 1 : value + 1); // 현재는 앞으로만 가고 다른 이벤트 없으므로 +1
-                sendUserPosition(destination, roomId, userWhoMove, scoreMap.get(userWhoMove));
+
+                gameMessageSender.sendUserPosition(destination, userWhoMove, scoreMap.get(userWhoMove));
+
                 try {
                     Thread.sleep(500);
                 } catch (InterruptedException e) {
@@ -264,79 +188,11 @@ public class GameService {
         }
     }
 
-    private void sendNextMessage(String destination, Long roomId, boolean isWinnerExist) {
-        messagingTemplate.convertAndSend(destination, NextResponseDTO.builder()
-                .type("next")
-                .response(NextResponse.builder()
-                        .username(roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId))
-                        .totalMovement(isWinnerExist ? 4 : 0)
-                        .build())
-                .build());
-    }
-
-    private void sendConsonantHint(String destination, Long roomId) {
-        String consonants = KoreanConsonantExtractor.extractConsonants(roomManager.getSong(roomId).getKorTitle());
-        messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
-                        .type("hint")
-                        .response(HintResponse.builder()
-                                .title(consonants)
-                                .build())
-                .build());
-    }
-
-    private void sendSingerHint(String destination, Long roomId) {
-        String consonants = KoreanConsonantExtractor.extractConsonants(roomManager.getSong(roomId).getKorTitle());
-        messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
-                .type("hint")
-                .response(HintResponse.builder()
-                        .title(consonants)
-                        .singer(roomManager.getSong(roomId).getArtist())
-                        .build())
-                .build());
-    }
-
     private void sendQuizInfo(String destination, Long roomId) {
         log.info("퀴즈 정보 전송");
-        messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
-                        .type("quizInfo")
-                        .response(QuizResponse.builder()
-                                .songUrl(roomManager.getSong(roomId).getUrl())
-                                .build())
-                .build());
+        gameMessageSender.sendQuizInfo(destination, roomManager.getSong(roomId).getUrl());
         roomManager.updateIsSongPlaying(roomId);
         log.info("updateIsSongPlaying : {}", roomManager.getIsSongPlaying(roomId));
-    }
-
-    private void sendCountdown(String destination, int countdown) {
-        TimerResponse timerResponse = TimerResponse.builder()
-                .type("timer")
-                .response(Response.builder()
-                        .remainTime(countdown)
-                        .build())
-                .build();
-
-        messagingTemplate.convertAndSend(destination, timerResponse);
-    }
-
-    private void sendUserPosition(String destination, Long roomId, String userWhoMove, Integer position) {
-        MoveResponseDTO moveResponseDTO = MoveResponseDTO.builder()
-                .type("move")
-                .response(MoveResponse.builder()
-                        .username(userWhoMove)
-                        .position(position)
-                        .build())
-                .build();
-
-        messagingTemplate.convertAndSend(destination, moveResponseDTO);
-    }
-
-    private void sendGameEndMessage(String destination, String finalWinner) {
-        messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
-                .type("gameEnd")
-                .response(GameEndResponse.builder()
-                        .winner(finalWinner)
-                        .build())
-                .build());
     }
 
     @Transactional
@@ -344,27 +200,8 @@ public class GameService {
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        sendRoomInfoToSubscriber(destination, room);
+        gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
         sendUserInfoToSubscriber(destination, room);
-    }
-
-    private void sendRoomInfoToSubscriber(String destination, Room room) {
-        // 방 정보 전송
-        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(room.getId());
-
-        messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
-                .type("roomInfo")
-                .response(RoomInfoResponse.builder()
-                        .roomTitle(room.getTitle())
-                        .maxPlayer(room.getMaxPlayer())
-                        .maxGameRound(room.getMaxGameRound())
-                        .hasPassword(room.getPassword()!=null&&!room.getPassword().isEmpty())
-                        .format(room.getFormat())
-                        .status(room.getStatus())
-                        .mode(gameModes)
-                        .selectedYear(roomManager.getSelectedYears(room.getId()))
-                        .build())
-                .build());
     }
 
     private void sendUserInfoToSubscriber(String destination, Room room) {
@@ -389,71 +226,18 @@ public class GameService {
             userInfoList.add(userInfo);
         }
 
-        messagingTemplate.convertAndSend(destination, UserInfoResponseDTO
-                .builder()
-                .type("userInfo")
-                .response(UserInfoResponse.builder()
-                        .userInfoList(userInfoList)
-                        .allReady(allReady)
-                        .build())
-                .build());
+        gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
     }
 
     private void sendGameResult(String destination, Long roomId, String userName) {
         Song song = roomManager.getSong(roomId);
-        String koreanTitle = song.getKorTitle();
-        String englishTitle = song.getEngTitle();
-        StringBuilder title = new StringBuilder();
-        if (englishTitle != null) {
-            title.append(koreanTitle).append("(").append(englishTitle).append(")");
-        } else {
-            title.append(koreanTitle);
-        }
-        messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()
-                .type("gameResult")
-                .response(ResultResponse.builder()
-                        .winner(userName)
-                        .songTitle(title.toString())
-                        .singer(song.getArtist())
-                        .score(1)
-                        .build())
-                .build());
+        gameMessageSender.sendGameResult(destination, userName, song);
     }
 
     public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
-        // 채팅의 모든 공백 제거 및 대문자 치환
-        String userAnswer = extractAnswer(chatRequest.getRequest().getMessage());
-
-        String koreanAnswer = extractAnswer(roomManager.getSong(roomId).getKorTitle());
-        String koreanAnswerWithNumber = convertNumbersToKorean(koreanAnswer);
-        String englishAnswer = roomManager.getSong(roomId).getEngTitle();
-
-        // 영어 제목이 있는 노래인 경우 한글 제목과 영어 제목 둘 다 정답 처리
-        if (englishAnswer != null) {
-            englishAnswer = extractAnswer(englishAnswer);
-            return userAnswer.equals(koreanAnswer) || userAnswer.equals(koreanAnswerWithNumber) || userAnswer.equals(englishAnswer);
-        }
-        return userAnswer.equals(koreanAnswer) || userAnswer.equals(koreanAnswerWithNumber);
-    }
-
-    private String extractAnswer(String answer) {
-        return answer.replaceAll("\\s+", "")
-                .replaceAll("\\([^)]*\\)", "")
-                .replaceAll("[^가-힣a-zA-Z0-9]", "")
-                .toUpperCase();
-    }
-
-    private String convertNumbersToKorean(String text) {
-        return text.replaceAll("0", "영")
-                .replaceAll("1", "일")
-                .replaceAll("2", "이")
-                .replaceAll("3", "삼")
-                .replaceAll("4", "사")
-                .replaceAll("5", "오")
-                .replaceAll("6", "육")
-                .replaceAll("7", "칠")
-                .replaceAll("8", "팔")
-                .replaceAll("9", "구");
+        String userAnswer = chatRequest.getRequest().getMessage();
+        Song song = roomManager.getSong(roomId);
+        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
     }
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
@@ -472,7 +256,7 @@ public class GameService {
 
         roomManager.setAnswer(roomId);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
-        cancelHintTimer(roomId);
+        gameTimerManager.cancelHintTimers(roomId);
 
         sendGameResult(destination, roomId, userName);
     }
@@ -500,23 +284,16 @@ public class GameService {
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         int participantCount = room.getMembers().size();
 
-
         log.debug("Room {} skip count: {}/{}", roomId, currentSkipCount, participantCount);
 
         // 스킵 정보 전송
-        messagingTemplate.convertAndSend(destination, SkipResponseDTO.builder()
-                .type("skip")
-                .response(SkipResponse.builder()
-                        .skipPerson(currentSkipCount)
-                        .build())
-                .build());
-
+        gameMessageSender.sendSkipInfo(destination, currentSkipCount);
 
         // 참가자 절반 초과 시 즉시 다음 라운드 시작
         if (currentSkipCount > participantCount / 2) {
             log.info("Skip count exceeded threshold, moving to next round.");
-            cancelHintTimer(roomId);
-            cancelRoundTimerAndTriggerImmediately(destination, roomId);
+            gameTimerManager.cancelHintTimers(roomId);
+            gameTimerManager.cancelRoundTimerAndTriggerImmediately(roomId, () -> triggerEndEvent(destination));
         }
     }
 
@@ -541,28 +318,10 @@ public class GameService {
         sendUserInfoToSubscriber(destination, room);
     }
 
-//    Todo: 방에 입장 시 사용자 레디 상태를 false로 세팅, joinRoom 기능 개발 이후 점검 필요
-    @EventListener
-    public void handleUserJoinedEvent(UserJoinedEvent event) {
-        Member member = memberService.getMemberByToken(event.username());
-        // host는 방을 만들면서 status가 초기화 되어 있음.
-        // host 외에 다른 사람이 방에 입장할 때 status 설정 해줘야 함.
-        if (roomManager.getRoomInfo(event.roomId()).getMemberReadyStatus().get(member.getId()) == null) {
-            roomManager.getReadyStatus(event.roomId()).put(member.getId(), false);
-            roomManager.getSkipStatus(event.roomId()).put(member.getId(), false);
-        }
-    }
-
     public void updateSongYears(Long roomId, List<Integer> selectedYears) {
         roomManager.setSelectedYears(roomId, selectedYears);
 //        roomAndSelectedYears.put(roomId, selectedYears);
     }
-
-    public Game getGameByMode(com.curioussong.alsongdalsong.game.domain.GameMode mode) {
-        return gameRepository.findByMode(mode)
-                .orElseThrow(() -> new RuntimeException("Game with mode " + mode + " not found"));
-    }
-
 
     // 최고 점수를 가진 플레이어 찾기
     private String findWinnerByScore(Long roomId, int minScore) {
@@ -575,10 +334,13 @@ public class GameService {
     }
 
     private void endGame(Long roomId, String destination) {
+        // 모든 타이머 종료
+        gameTimerManager.shutdownAllTimers(roomId);
+
         // 최고 점수 가진 플레이어 찾기
         String finalWinner = findWinnerByScore(roomId, 0);
         log.info("Game ended. Final winner: {}", finalWinner);
-        sendGameEndMessage(destination, finalWinner);
+        gameMessageSender.sendGameEndMessage(destination, finalWinner);
 
         // 멤버 상태 초기화
         roomManager.initializeMemberStatus(roomId);
@@ -604,9 +366,11 @@ public class GameService {
                 roomRepository.findById(roomId)
                         .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다.")),
                 "WAITING"));
-        scheduler.schedule(() -> {
-            sendRoomInfoToSubscriber(destination, room);
+        ScheduledExecutorService tempScheduler = Executors.newSingleThreadScheduledExecutor();
+        tempScheduler.schedule(() -> {
+            gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
             sendUserInfoToSubscriber(destination, room);
+            tempScheduler.shutdown();
         }, 3, TimeUnit.SECONDS);
     }
 }
