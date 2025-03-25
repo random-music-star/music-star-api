@@ -90,6 +90,13 @@ public class BoardEventHandler {
 
                 case PULL:
                     handlePullEvent(trigger, roomId, destination);
+
+                case CLOVER:
+                    handleCloverEvent(destination, roomId, trigger, currentPosition);
+
+                case BOMB:
+                    handleBombEvent(destination, roomId, trigger, currentPosition);
+
                 case NOTHING:
                 default:
                     log.info("No effect for user {}", trigger);
@@ -98,6 +105,18 @@ public class BoardEventHandler {
         } catch (Exception e) {
             log.error("Error processing event {}: {}", eventType, e.getMessage(), e);
         }
+    }
+
+    private void handleBombEvent(String destination, Long roomId, String trigger, int currentPosition) {
+        int bombMove = 5;
+        int newPosition = Math.max(0, currentPosition - bombMove);
+        updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
+    }
+
+    private void handleCloverEvent(String destination, Long roomId, String trigger, int currentPosition) {
+        int cloverMove = 5;
+        int newPosition = currentPosition + cloverMove;
+        updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
     private void handlePlusEvent(String destination, Long roomId, String trigger, int currentPosition) {
