@@ -81,7 +81,8 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
 
-        Member member = memberRepository.findByUsername(userName);
+        Member member = memberRepository.findByUsername(userName)
+                .orElseThrow(() -> new EntityNotFoundException("해당 회원이 없습니다."));;
 
         room.addMember(member);
 
@@ -98,7 +99,9 @@ public class RoomService {
         log.debug("방 나가기 전 멤버 수: {}", room.getMembers().size());
         log.debug("방 멤버 목록: {}", room.getMembers().stream().map(Member::getUsername).toList());
 
-        Member member = memberRepository.findByUsername(userName);
+        Member member = memberRepository.findByUsername(userName)
+                .orElseThrow(() -> new EntityNotFoundException("해당 회원이 없습니다."));
+
         log.debug("나가는 멤버: {}", member.getUsername());
 
         if (isHostLeaving(room, member)) {
