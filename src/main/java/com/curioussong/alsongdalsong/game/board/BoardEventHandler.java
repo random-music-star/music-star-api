@@ -59,6 +59,8 @@ public class BoardEventHandler {
 
             log.info("Event triggered: type={}, trigger={}", eventType, trigger);
 
+            Thread.sleep(1500);
+
             // 3. 이벤트 종료 메시지 전송
             gameMessageSender.sendEventEnd(destination);
 
@@ -90,12 +92,15 @@ public class BoardEventHandler {
 
                 case PULL:
                     handlePullEvent(trigger, roomId, destination);
+                    break;
 
                 case CLOVER:
                     handleCloverEvent(destination, roomId, trigger, currentPosition);
+                    break;
 
                 case BOMB:
                     handleBombEvent(destination, roomId, trigger, currentPosition);
+                    break;
 
                 case NOTHING:
                 default:
