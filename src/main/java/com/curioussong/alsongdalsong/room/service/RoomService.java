@@ -209,4 +209,10 @@ public class RoomService {
                 .currentPage(roomPage.getNumber())
                 .build();
     }
+
+    public boolean isRoomFinished(Long roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+        return room.getStatus() == Room.RoomStatus.FINISHED;
+    }
 }

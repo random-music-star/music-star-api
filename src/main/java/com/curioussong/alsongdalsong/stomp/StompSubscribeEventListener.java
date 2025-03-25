@@ -77,7 +77,7 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
             log.debug("room id {}, It's work when subscribe the topic", roomId);
 
             // 방이 가득 찼거나, 게임 진행 중이면 참가 불가
-            if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId)) {
+            if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId) || roomService.isRoomFinished(roomId)) {
                 sendRefuseMessage(destination, userName);
                 return;
             }
