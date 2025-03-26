@@ -17,9 +17,9 @@ public enum BoardEventType {
     NOTHING(10, false, true),
     BOMB(10, false, true),
     CLOVER(10, false, true),
-    SWAP(20, true, false),
-    WARP(20, false, true),
-    MAGNET(0, true, false),;
+    SWAP(15, true, false),
+    WARP(15, false, true),
+    MAGNET(10, true, false),;
 
     private final int probability;
     private final boolean hasTarget;

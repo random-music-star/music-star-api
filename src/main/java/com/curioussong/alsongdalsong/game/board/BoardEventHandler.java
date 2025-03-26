@@ -9,10 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
@@ -38,12 +35,6 @@ public class BoardEventHandler {
 
         String target = null;
 
-        BoardEventResponse eventResponse = BoardEventResponse.builder()
-                .eventType(eventType)
-                .trigger(trigger)
-                .target(target)
-                .build();
-
         if (eventType == BoardEventType.PULL) {
             Random random = new Random();
             int pullDirection = random.nextInt(2); // 0: 뒤쳐진 사람, 1: 앞선 사람
@@ -52,10 +43,16 @@ public class BoardEventHandler {
             target = findPullEventTarget(pullDirection, roomId, trigger);
             if (target == null) {
                 log.info("is Not Pullable");
-                eventResponse.updateEventType(BoardEventType.NOTHING);
+                eventType = BoardEventType.NOTHING;
             }
-            eventResponse.updateTarget(target);
         }
+
+        BoardEventResponse eventResponse = BoardEventResponse.builder()
+                .eventType(eventType)
+                .trigger(trigger)
+                .target(target)
+                .build();
+
 
         return BoardEventResponseDTO.builder()
                 .response(eventResponse)
@@ -103,32 +100,40 @@ public class BoardEventHandler {
     private String findPullEventTarget(int pullDirection, Long roomId, String trigger) {
         Map<String, Integer> userScore = roomManager.getRoomInfo(roomId).getScore();
         int triggerPosition = userScore.get(trigger);
-        String target = null;
 
         if (pullDirection == 0) { // 뒤쳐진 사람 당길 수 있는지 확인
-            int targetPosition = Integer.MIN_VALUE;
-            for (Map.Entry<String, Integer> entry : userScore.entrySet()) {
-                int score = entry.getValue();
-                if (score == 0) { // 시작점에 있으면 끌어당기지 않음
-                    continue;
-                }
-                if (score < triggerPosition) {
-                    if (score > targetPosition) {
-                        target = entry.getKey();
-                        targetPosition = score;
-                    }
-                }
-            }
+            return findPullFrontTarget(userScore, triggerPosition);
         } else if (pullDirection == 1) { // 앞선 사람 당길 수 있는지 확인
-            int targetPosition = Integer.MAX_VALUE;
-            for (Map.Entry<String, Integer> entry : userScore.entrySet()) {
-                int score = entry.getValue();
-                if (score > triggerPosition) {
-                    if (score < targetPosition) {
-                        target = entry.getKey();
-                        targetPosition = score;
-                    }
-                }
+            return findPullBehindTarget(userScore, triggerPosition);
+        }
+        return null;
+    }
+
+    private String findPullFrontTarget(Map<String, Integer> userScore, int triggerPosition) {
+        String target = null;
+        int targetPosition = Integer.MIN_VALUE;
+        for (Map.Entry<String, Integer> entry : userScore.entrySet()) {
+            int score = entry.getValue();
+            if (score == 0) { // 시작점에 있으면 끌어당기지 않음
+                continue;
+            }
+            if (score < triggerPosition && score > targetPosition) {
+                target = entry.getKey();
+                targetPosition = score;
+            }
+        }
+
+        return target;
+    }
+
+    private String findPullBehindTarget(Map<String, Integer> userScore, int triggerPosition) {
+        String target = null;
+        int targetPosition = Integer.MAX_VALUE;
+        for (Map.Entry<String, Integer> entry : userScore.entrySet()) {
+            int score = entry.getValue();
+            if (score > triggerPosition && score < targetPosition) {
+                target = entry.getKey();
+                targetPosition = score;
             }
         }
 
@@ -154,6 +159,8 @@ public class BoardEventHandler {
                 case SWAP -> handleSwapEvent(destination, roomId, trigger, currentPosition);
 
                 case WARP -> handleWarpEvent(destination, roomId, trigger);
+
+                case MAGNET -> handleMagnetEvent(destination, roomId, trigger);
 
                 case NOTHING -> log.info("No effect for user {}", trigger);
                 default -> log.info("Case default, No effect for user {}", trigger);
@@ -238,5 +245,21 @@ public class BoardEventHandler {
         Map<String, Integer> userScore = roomManager.getRoomInfo(roomId).getScore();
         int targetPosition = userScore.get(trigger);
         updatePositionAndSendMessage(destination, roomId, target, targetPosition);
+    }
+
+    private void handleMagnetEvent(String destination, Long roomId, String trigger) {
+        String target = findMagnetTarget(trigger, roomId);
+        int targetPosition = roomManager.getRoomInfo(roomId).getScore().get(target);
+        updatePositionAndSendMessage(destination, roomId, trigger, targetPosition);
+    }
+
+    private String findMagnetTarget(String trigger, Long roomId) {
+        Map<String, Integer> userScore = roomManager.getRoomInfo(roomId).getScore();
+        int triggerPosition = userScore.get(trigger);
+        return userScore.entrySet().stream()
+                .filter(entry -> !entry.getKey().equals(trigger))
+                .min(Comparator.comparingInt(entry -> Math.abs(entry.getValue() - triggerPosition)))
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 }
