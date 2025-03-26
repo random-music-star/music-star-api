@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
@@ -102,6 +104,10 @@ public class BoardEventHandler {
                     handleBombEvent(destination, roomId, trigger, currentPosition);
                     break;
 
+                case SWAP:
+                    handleSwapEvent(destination, roomId, trigger, currentPosition);
+                    break;
+
                 case NOTHING:
                 default:
                     log.info("No effect for user {}", trigger);
@@ -110,6 +116,35 @@ public class BoardEventHandler {
         } catch (Exception e) {
             log.error("Error processing event {}: {}", eventType, e.getMessage(), e);
         }
+    }
+
+    // 랜덤한 플레이어와 자리 교체
+    private void handleSwapEvent(String destination, Long roomId, String trigger, int currentPosition) {
+
+        // 방에 있는 플레이어 중 하나 선택
+        Map<String, Integer> scores = roomManager.getRoomInfo(roomId).getScore();
+
+        List<String> others = new ArrayList<>();
+
+        // 나를 제외한 유저 찾기
+        for (String name : scores.keySet()) {
+            if (!name.equals(trigger)) {
+                others.add(name);
+            }
+        }
+
+        Random random = new Random();
+        String target = others.get(random.nextInt(others.size()));
+
+        // 위치 스왑
+        int temp = scores.get(target);
+        scores.put(target, scores.get(trigger));
+        scores.put(trigger, temp);
+
+        // 위치 정보 전송
+        gameMessageSender.sendUserPosition(destination, trigger, scores.get(trigger));
+        gameMessageSender.sendUserPosition(destination, target, scores.get(target));
+
     }
 
     private void handleBombEvent(String destination, Long roomId, String trigger, int currentPosition) {
