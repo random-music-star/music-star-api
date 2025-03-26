@@ -117,6 +117,7 @@ public class GameService {
 
     public void startCountdown(String destination, Long roomId) {
         gameTimerManager.startCountdown(destination, roomId, () -> {
+            roomManager.updateIsSongPlaying(roomId);
             // 카운트다운 완료 후 실행될 코드
             gameTimerManager.scheduleSongPlayTime(
                     destination,
@@ -126,7 +127,6 @@ public class GameService {
             );
         });
         roomManager.initAnswer(roomId);
-        roomManager.updateIsSongPlaying(roomId);
     }
 
     private void triggerEndEvent(String destination) {
