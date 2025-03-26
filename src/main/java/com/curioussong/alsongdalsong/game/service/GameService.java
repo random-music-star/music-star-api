@@ -195,7 +195,7 @@ public class GameService {
             }
         }
         // 이벤트 생성 및 처리
-        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(firstMover);
+        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(firstMover, roomId);
         boardEventHandler.handleEvent(destination, roomId, eventResponse);
     }
 

@@ -23,7 +23,7 @@ public class BoardEventHandler {
     private final RoomManager roomManager;
     private final GameMessageSender gameMessageSender;
 
-    public BoardEventResponseDTO generateEvent(String trigger) {
+    public BoardEventResponseDTO generateEvent(String trigger, Long roomId) {
 
         BoardEventType eventType = BoardEventType.getRandomEventType();
         log.debug("Generating event  trigger {}", trigger);
@@ -36,6 +36,19 @@ public class BoardEventHandler {
                 .target(target)
                 .build();
 
+        if (eventType == BoardEventType.PULL) {
+            Random random = new Random();
+            int pullDirection = random.nextInt(2); // 0: 뒤쳐진 사람, 1: 앞선 사람
+            log.info("Handling pull direction {}", pullDirection);
+
+            target = findPullEventTarget(pullDirection, roomId, trigger);
+            if (target == null) {
+                log.info("is Not Pullable");
+                eventResponse.updateEventType(BoardEventType.NOTHING);
+            }
+            eventResponse.updateTarget(target);
+        }
+
         return BoardEventResponseDTO.builder()
                 .response(eventResponse)
                 .build();
@@ -45,7 +58,12 @@ public class BoardEventHandler {
 
         try {
             // 1. 이벤트 트리거 메시지 전송
-            String trigger = eventResponseDTO.getResponse().trigger();
+            String trigger = eventResponseDTO.getResponse().getTrigger();
+            String target = eventResponseDTO.getResponse().getTarget();
+
+            // 이벤트 타입, 발생자 추출
+            BoardEventResponse response = eventResponseDTO.getResponse();
+            BoardEventType eventType = response.getEventType();
 
             gameMessageSender.sendEventTrigger(destination, trigger);
 
@@ -55,9 +73,6 @@ public class BoardEventHandler {
             // 2. 이벤트 메시지 전송
             gameMessageSender.sendBoardEventMessage(destination, eventResponseDTO);
 
-            // 이벤트 타입, 발생자 추출
-            BoardEventResponse response = eventResponseDTO.getResponse();
-            BoardEventType eventType = response.eventType();
 
             log.info("Event triggered: type={}, trigger={}", eventType, trigger);
 
@@ -69,7 +84,7 @@ public class BoardEventHandler {
             Thread.sleep(1500);
 
             // 4. 이벤트 효과 적용 (move 메시지 전송 포함)
-            applyEventEffect(destination, roomId, eventType, trigger);
+            applyEventEffect(destination, roomId, eventType, trigger, target);
 
             Thread.sleep(1500);
 
@@ -78,7 +93,42 @@ public class BoardEventHandler {
         }
     }
 
-    private void applyEventEffect(String destination, Long roomId, BoardEventType eventType, String trigger) {
+    private String findPullEventTarget(int pullDirection, Long roomId, String trigger) {
+        Map<String, Integer> userScore = roomManager.getRoomInfo(roomId).getScore();
+        int triggerPosition = userScore.get(trigger);
+        String target = null;
+
+        if (pullDirection == 0) { // 뒤쳐진 사람 당길 수 있는지 확인
+            int targetPosition = Integer.MIN_VALUE;
+            for (Map.Entry<String, Integer> entry : userScore.entrySet()) {
+                int score = entry.getValue();
+                if (score == 0) { // 시작점에 있으면 끌어당기지 않음
+                    continue;
+                }
+                if (score < triggerPosition) {
+                    if (score > targetPosition) {
+                        target = entry.getKey();
+                        targetPosition = score;
+                    }
+                }
+            }
+        } else if (pullDirection == 1) { // 앞선 사람 당길 수 있는지 확인
+            int targetPosition = Integer.MAX_VALUE;
+            for (Map.Entry<String, Integer> entry : userScore.entrySet()) {
+                int score = entry.getValue();
+                if (score > triggerPosition) {
+                    if (score < targetPosition) {
+                        target = entry.getKey();
+                        targetPosition = score;
+                    }
+                }
+            }
+        }
+
+        return target;
+    }
+
+    private void applyEventEffect(String destination, Long roomId, BoardEventType eventType, String trigger, String target) {
         // 현재 위치 가져오기
         int currentPosition = roomManager.getRoomInfo(roomId).getScore().getOrDefault(trigger, 0);
 
@@ -93,7 +143,7 @@ public class BoardEventHandler {
                     break;
 
                 case PULL:
-                    handlePullEvent(trigger, roomId, destination);
+                    handlePullEvent(roomId, destination, eventType, trigger, target);
                     break;
 
                 case CLOVER:
@@ -182,96 +232,9 @@ public class BoardEventHandler {
         gameMessageSender.sendUserPosition(destination, trigger, newPosition);
     }
 
-    private void handlePullEvent(String triggerUser, Long roomId, String destination) {
-        Random random = new Random();
-        //        int randomInt = random.nextInt(2);
-        int randomInt = 1;
-        Map<String, Integer> scores = roomManager.getRoomInfo(roomId).getScore();
-        int triggerUserPosition = scores.get(triggerUser);
-        String targetUser = null;
-
-        // 앞 사람 중 가장 가까운 사람 당겨오기
-        if (randomInt == 0) {
-            int targetUserPosition = Integer.MAX_VALUE;
-            for (Map.Entry<String, Integer> entry : scores.entrySet()) {
-                int score = entry.getValue();
-                if (score > triggerUserPosition) {
-                    if (score < targetUserPosition) {
-                        targetUserPosition = score;
-                        targetUser = entry.getKey();
-                    }
-                }
-            }
-
-            // 나보다 앞선 사람이 없음
-            if (targetUser == null) {
-                BoardEventResponse response = BoardEventResponse.builder()
-                        .eventType(BoardEventType.NOTHING)
-                        .trigger(triggerUser)
-                        .build();
-
-                BoardEventResponseDTO responseDTO = BoardEventResponseDTO.builder()
-                        .response(response)
-                        .build();
-
-                gameMessageSender.sendBoardEventMessage(destination, responseDTO);
-            } else {
-                scores.put(targetUser, triggerUserPosition);
-                BoardEventResponse response = BoardEventResponse.builder()
-                        .eventType(BoardEventType.NOTHING)
-                        .trigger(triggerUser)
-                        .target(targetUser)
-                        .build();
-
-                BoardEventResponseDTO responseDTO = BoardEventResponseDTO.builder()
-                        .response(response)
-                        .build();
-
-                gameMessageSender.sendBoardEventMessage(destination, responseDTO);
-
-                gameMessageSender.sendUserPosition(destination, targetUser, triggerUserPosition);
-
-            }
-        } else { // 뒷 사람 중 가장 가까운 사람 당겨오기
-            int targetUserPosition = Integer.MIN_VALUE;
-            for (Map.Entry<String, Integer> entry : scores.entrySet()) {
-                int score = entry.getValue();
-                if (score < triggerUserPosition) {
-                    if (score > targetUserPosition) {
-                        targetUserPosition = score;
-                        targetUser = entry.getKey();
-                    }
-                }
-            }
-
-            // 나보다 뒤쳐진 사람이 없음
-            if (targetUser == null) {
-                BoardEventResponse response = BoardEventResponse.builder()
-                        .eventType(BoardEventType.NOTHING)
-                        .trigger(triggerUser)
-                        .build();
-
-                BoardEventResponseDTO responseDTO = BoardEventResponseDTO.builder()
-                        .response(response)
-                        .build();
-
-                gameMessageSender.sendBoardEventMessage(destination, responseDTO);
-            } else {
-                scores.put(targetUser, triggerUserPosition);
-                BoardEventResponse response = BoardEventResponse.builder()
-                        .eventType(BoardEventType.NOTHING)
-                        .trigger(triggerUser)
-                        .target(targetUser)
-                        .build();
-
-                BoardEventResponseDTO responseDTO = BoardEventResponseDTO.builder()
-                        .response(response)
-                        .build();
-
-                gameMessageSender.sendBoardEventMessage(destination, responseDTO);
-
-                gameMessageSender.sendUserPosition(destination, targetUser, triggerUserPosition);
-            }
-        }
+    private void handlePullEvent(Long roomId, String destination, BoardEventType eventType, String trigger, String target) {
+        Map<String, Integer> userScore = roomManager.getRoomInfo(roomId).getScore();
+        int targetPosition = userScore.get(trigger);
+        updatePositionAndSendMessage(destination, roomId, target, targetPosition);
     }
 }

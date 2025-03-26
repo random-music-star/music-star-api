@@ -159,8 +159,16 @@ public class RoomManager {
     }
 
     private void initializeScores(Long roomId) {
-        RoomInfo roomInfo = getRoomInfo(roomId);
-        roomInfo.getScore().clear();
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+        List<Member> members = room.getMembers();
+
+        Map<String, Integer> userScore = getRoomInfo(roomId).getScore();
+        userScore.clear();
+
+        for (Member member : members) {
+            userScore.put(member.getUsername(), 0);
+        }
     }
 
     // 현재 라운드의 곡 정보 반환
