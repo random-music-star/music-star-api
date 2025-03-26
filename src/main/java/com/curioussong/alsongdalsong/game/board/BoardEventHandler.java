@@ -23,9 +23,17 @@ public class BoardEventHandler {
     private final RoomManager roomManager;
     private final GameMessageSender gameMessageSender;
 
-    public BoardEventResponseDTO generateEvent(String trigger, Long roomId) {
+    public BoardEventResponseDTO generateEvent(String trigger, int playerCount, Long roomId) {
+        boolean isSoloPlay = (playerCount == 1);
 
-        BoardEventType eventType = BoardEventType.getRandomEventType();
+        BoardEventType eventType;
+
+        if(isSoloPlay){
+            eventType = BoardEventType.getRandomSoloEventType();
+        } else {
+            eventType = BoardEventType.getRandomEventType();
+        }
+
         log.debug("Generating event  trigger {}", trigger);
 
         String target = null;
@@ -61,10 +69,6 @@ public class BoardEventHandler {
             String trigger = eventResponseDTO.getResponse().getTrigger();
             String target = eventResponseDTO.getResponse().getTarget();
 
-            // 이벤트 타입, 발생자 추출
-            BoardEventResponse response = eventResponseDTO.getResponse();
-            BoardEventType eventType = response.getEventType();
-
             gameMessageSender.sendEventTrigger(destination, trigger);
 
             // 1초 대기
@@ -73,6 +77,9 @@ public class BoardEventHandler {
             // 2. 이벤트 메시지 전송
             gameMessageSender.sendBoardEventMessage(destination, eventResponseDTO);
 
+            // 이벤트 타입, 발생자 추출
+            BoardEventResponse response = eventResponseDTO.getResponse();
+            BoardEventType eventType = response.getEventType();
 
             log.info("Event triggered: type={}, trigger={}", eventType, trigger);
 
@@ -134,33 +141,22 @@ public class BoardEventHandler {
 
         try {
             switch (eventType) {
-                case PLUS:
-                    handlePlusEvent(destination, roomId, trigger, currentPosition);
-                    break;
+                case PLUS -> handlePlusEvent(destination, roomId, trigger, currentPosition);
 
-                case MINUS:
-                    handleMinusEvent(destination, roomId, trigger, currentPosition);
-                    break;
+                case MINUS -> handleMinusEvent(destination, roomId, trigger, currentPosition);
 
-                case PULL:
-                    handlePullEvent(roomId, destination, eventType, trigger, target);
-                    break;
+                case PULL -> handlePullEvent(roomId, destination, eventType, trigger, target);
 
-                case CLOVER:
-                    handleCloverEvent(destination, roomId, trigger, currentPosition);
-                    break;
+                case CLOVER -> handleCloverEvent(destination, roomId, trigger, currentPosition);
 
-                case BOMB:
-                    handleBombEvent(destination, roomId, trigger, currentPosition);
-                    break;
+                case BOMB -> handleBombEvent(destination, roomId, trigger, currentPosition);
 
-                case SWAP:
-                    handleSwapEvent(destination, roomId, trigger, currentPosition);
-                    break;
+                case SWAP -> handleSwapEvent(destination, roomId, trigger, currentPosition);
 
-                case NOTHING:
-                default:
-                    log.info("No effect for user {}", trigger);
+                case WARP -> handleWarpEvent(destination, roomId, trigger);
+
+                case NOTHING -> log.info("No effect for user {}", trigger);
+                default -> log.info("Case default, No effect for user {}", trigger);
             }
 
         } catch (Exception e) {
@@ -195,6 +191,12 @@ public class BoardEventHandler {
         gameMessageSender.sendUserPosition(destination, trigger, scores.get(trigger));
         gameMessageSender.sendUserPosition(destination, target, scores.get(target));
 
+    }
+
+    private void handleWarpEvent(String destination, Long roomId, String trigger) {
+        int newPosition = ThreadLocalRandom.current().nextInt(0, 16);
+        log.debug("nowPosition:{}", newPosition);
+        updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
     private void handleBombEvent(String destination, Long roomId, String trigger, int currentPosition) {

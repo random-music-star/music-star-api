@@ -4,40 +4,60 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import java.util.Arrays;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public enum BoardEventType {
 
-    PLUS(20, false),
-    MINUS(20, false),
-    PULL(20, true),
-    NOTHING(0, false),
-    BOMB(20, false),
-    CLOVER(20, false),
-    SWAP(0, true),
-    WARP(0, false),
-    MAGNET(0, true);
+    PLUS(10, false, true),
+    MINUS(10, false, true),
+    PULL(10, true, false),
+    NOTHING(10, false, true),
+    BOMB(10, false, true),
+    CLOVER(10, false, true),
+    SWAP(20, true, false),
+    WARP(20, false, true),
+    MAGNET(0, true, false),;
 
     private final int probability;
     private final boolean hasTarget;
+    private final boolean isSoloPlayable;
 
     public boolean hasTarget() {
         return this.hasTarget;
     }
 
+    public static BoardEventType getRandomSoloEventType() {
+        // 솔로 플레이 가능한 이벤트들만 필터링
+        BoardEventType[] soloPlayableEvents = Arrays.stream(values())
+                .filter(BoardEventType::isSoloPlayable)
+                .toArray(BoardEventType[]::new);
+
+        // 솔로 플레이 가능한 이벤트들의 총 확률 합계 계산
+        int totalProbability = Arrays.stream(soloPlayableEvents)
+                .mapToInt(BoardEventType::getProbability)
+                .sum();
+
+        // 무작위 값 생성 (0 ~ totalProbability-1 사이)
+        return getRandomEventTypeWithProbability(soloPlayableEvents, totalProbability);
+    }
+
     public static BoardEventType getRandomEventType() {
-        int randomValue = ThreadLocalRandom.current().nextInt(100);
+        return getRandomEventTypeWithProbability(BoardEventType.values(), 100);
+    }
+
+    private static BoardEventType getRandomEventTypeWithProbability(BoardEventType[] eventTypes, int maxProbability) {
+        int randomValue = ThreadLocalRandom.current().nextInt(maxProbability);
 
         int accumulatedProbability = 0;
-        for (BoardEventType eventType : BoardEventType.values()) {
-            accumulatedProbability += eventType.probability;
+        for (BoardEventType eventType : eventTypes) {
+            accumulatedProbability += eventType.getProbability();
             if (randomValue < accumulatedProbability) {
                 return eventType;
             }
         }
         return BoardEventType.NOTHING;
     }
-
 }

@@ -107,8 +107,10 @@ public class GameService {
         log.debug("sendRoundInfo 호출됨 - destination: {}, roomId: {}", destination, roomId);
         // Todo : 하드코딩된 gameMode를 사용자가 설정한 값으로 불러오도록 수정 필요
         gameMessageSender.sendRoundInfo(destination, roomManager.getCurrentRound(roomId), GameMode.FULL);
-
         log.debug("sendRoundInfo 메시지 전송 완료 - round: {}", roomManager.getCurrentRound(roomId));
+
+        sendQuizInfo(destination, roomId);
+
         log.info("카운트 다운 시작");
         startCountdown(destination, roomId);
     }
@@ -122,9 +124,9 @@ public class GameService {
                     roomId,
                     () -> triggerEndEvent(destination)
             );
-            roomManager.initAnswer(roomId);
-            sendQuizInfo(destination, roomId);
         });
+        roomManager.initAnswer(roomId);
+        roomManager.updateIsSongPlaying(roomId);
     }
 
     private void triggerEndEvent(String destination) {
@@ -170,8 +172,6 @@ public class GameService {
         String firstMover = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
         userTurn.push(firstMover);
 
-        int positionBeforeMove = userMovement.get(firstMover);
-
         while (!userTurn.empty()) {
             String mover = userTurn.pop();
             while (userMovement.get(mover) > 0) {
@@ -194,16 +194,16 @@ public class GameService {
 
             }
         }
+
+        int playerCount = roomManager.getRoomInfo(roomId).getScore().size();
+
         // 이벤트 생성 및 처리
-        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(firstMover, roomId);
+        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(firstMover, playerCount, roomId);
         boardEventHandler.handleEvent(destination, roomId, eventResponse);
     }
 
     private void sendQuizInfo(String destination, Long roomId) {
-        log.info("퀴즈 정보 전송");
         gameMessageSender.sendQuizInfo(destination, roomManager.getSong(roomId).getUrl());
-        roomManager.updateIsSongPlaying(roomId);
-        log.info("updateIsSongPlaying : {}", roomManager.getIsSongPlaying(roomId));
     }
 
     @Transactional
