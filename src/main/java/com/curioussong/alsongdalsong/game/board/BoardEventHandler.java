@@ -42,7 +42,7 @@ public class BoardEventHandler {
                 eventType = BoardEventType.NOTHING;
             }
         } else if (eventType == BoardEventType.SWAP) {
-            target = findSwapEventTarget(target, roomId);
+            target = findSwapEventTarget(trigger, roomId);
         } else if (eventType == BoardEventType.MAGNET) {
             target = findMagnetEventTarget(trigger, roomId);
         }
