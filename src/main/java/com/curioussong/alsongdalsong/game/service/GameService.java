@@ -10,7 +10,6 @@ import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
-import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -208,7 +207,8 @@ public class GameService {
         String userAnswer = chatRequest.getRequest().getMessage();
         Song song = inGameManager.getCurrentRoundSong(roomId);
         log.info("current song: {}", song.getKorTitle());
-        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
+        return userAnswer.equals(song.getKorTitle()) || userAnswer.equals(song.getEngTitle());
+//        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
     }
 
     public void handleAnswer(String userName, Long channelId, String roomId) {
@@ -235,6 +235,7 @@ public class GameService {
 
     @Transactional
     public void incrementSkipCount(String roomId, Long channelId, String username) {
+        log.info("try skip");
         Long memberId = memberService.getMemberByToken(username).getId();
 
         // 이미 스킵을 한 사용자라면

@@ -2,7 +2,6 @@ package com.curioussong.alsongdalsong.game.board;
 
 import com.curioussong.alsongdalsong.game.board.enums.BoardEventType;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
-import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponse;
 import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
@@ -18,7 +17,6 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 public class BoardEventHandler {
 
-    private final RoomManager roomManager;
     private final GameMessageSender gameMessageSender;
     private final InGameManager inGameManager;
 
@@ -38,15 +36,15 @@ public class BoardEventHandler {
         String target = null;
 
         if (eventType == BoardEventType.PULL) {
-            Random random = new Random();
-            int pullDirection = random.nextInt(2); // 0: 뒤쳐진 사람, 1: 앞선 사람
-            log.info("Handling pull direction {}", pullDirection);
-
-            target = findPullEventTarget(pullDirection, roomId, trigger);
+            target = findPullEventTarget(roomId, trigger);
             if (target == null) {
                 log.info("is Not Pullable");
                 eventType = BoardEventType.NOTHING;
             }
+        } else if (eventType == BoardEventType.SWAP) {
+            target = findSwapEventTarget(target, roomId);
+        } else if (eventType == BoardEventType.MAGNET) {
+            target = findMagnetEventTarget(trigger, roomId);
         }
 
         BoardEventResponse eventResponse = BoardEventResponse.builder()
@@ -99,7 +97,10 @@ public class BoardEventHandler {
         }
     }
 
-    private String findPullEventTarget(int pullDirection, String roomId, String trigger) {
+    private String findPullEventTarget(String roomId, String trigger) {
+        Random random = new Random();
+        int pullDirection = random.nextInt(2); // 0: 뒤쳐진 사람, 1: 앞선 사람
+
         Map<String, Integer> userScore = inGameManager.getScore(roomId);
         int triggerPosition = userScore.get(trigger);
 
@@ -158,11 +159,11 @@ public class BoardEventHandler {
 
                 case BOMB -> handleBombEvent(destination, roomId, trigger, currentPosition);
 
-                case SWAP -> handleSwapEvent(destination, roomId, trigger, currentPosition);
+                case SWAP -> handleSwapEvent(destination, roomId, trigger, target);
 
                 case WARP -> handleWarpEvent(destination, roomId, trigger);
 
-                case MAGNET -> handleMagnetEvent(destination, roomId, trigger);
+                case MAGNET -> handleMagnetEvent(destination, roomId, trigger, target);
 
                 case NOTHING -> log.info("No effect for user {}", trigger);
                 default -> log.info("Case default, No effect for user {}", trigger);
@@ -174,8 +175,20 @@ public class BoardEventHandler {
     }
 
     // 랜덤한 플레이어와 자리 교체
-    private void handleSwapEvent(String destination, String roomId, String trigger, int currentPosition) {
+    private void handleSwapEvent(String destination, String roomId, String trigger, String target) {
+        Map<String, Integer> scores = inGameManager.getScore(roomId);
 
+        // 위치 스왑
+        int temp = scores.get(target);
+        scores.put(target, scores.get(trigger));
+        scores.put(trigger, temp);
+
+        // 위치 정보 전송
+        gameMessageSender.sendUserPosition(destination, trigger, scores.get(trigger));
+        gameMessageSender.sendUserPosition(destination, target, scores.get(target));
+    }
+
+    private String findSwapEventTarget(String trigger, String roomId) {
         // 방에 있는 플레이어 중 하나 선택
         Map<String, Integer> scores = inGameManager.getScore(roomId);
 
@@ -189,17 +202,7 @@ public class BoardEventHandler {
         }
 
         Random random = new Random();
-        String target = others.get(random.nextInt(others.size()));
-
-        // 위치 스왑
-        int temp = scores.get(target);
-        scores.put(target, scores.get(trigger));
-        scores.put(trigger, temp);
-
-        // 위치 정보 전송
-        gameMessageSender.sendUserPosition(destination, trigger, scores.get(trigger));
-        gameMessageSender.sendUserPosition(destination, target, scores.get(target));
-
+        return others.get(random.nextInt(others.size()));
     }
 
     private void handleWarpEvent(String destination, String roomId, String trigger) {
@@ -249,13 +252,12 @@ public class BoardEventHandler {
         updatePositionAndSendMessage(destination, roomId, target, targetPosition);
     }
 
-    private void handleMagnetEvent(String destination, String roomId, String trigger) {
-        String target = findMagnetTarget(trigger, roomId);
+    private void handleMagnetEvent(String destination, String roomId, String trigger, String target) {
         int targetPosition = inGameManager.getScore(roomId).get(target);
         updatePositionAndSendMessage(destination, roomId, trigger, targetPosition);
     }
 
-    private String findMagnetTarget(String trigger, String roomId) {
+    private String findMagnetEventTarget(String trigger, String roomId) {
         Map<String, Integer> userScore = inGameManager.getScore(roomId);
         int triggerPosition = userScore.get(trigger);
         return userScore.entrySet().stream()
