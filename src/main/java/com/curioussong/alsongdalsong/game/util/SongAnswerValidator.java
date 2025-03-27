@@ -6,7 +6,7 @@ public class SongAnswerValidator {
     public static String extractAnswer(String answer) {
         return answer.replaceAll("\\s+", "")
                 .replaceAll("\\([^)]*\\)", "")
-                .replaceAll("[^가-힣a-zA-Z0-9]", "")
+                .replaceAll("[^가-힣ㄱ-ㅎa-zA-Z0-9]", "")
                 .toUpperCase();
     }
 

@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.room.event;
 
+import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
@@ -15,6 +16,7 @@ public class UserJoinedEventListener {
 
     private final MemberService memberService;
     private final RoomManager roomManager;
+    private final InGameManager inGameManager;
 
     @EventListener
     public void handleUserJoinedEvent(UserJoinedEvent event) {
@@ -23,7 +25,7 @@ public class UserJoinedEventListener {
         // host 외에 다른 사람이 방에 입장할 때 status 설정 해줘야 함.
         if (roomManager.getRoomInfo(event.roomId()).getMemberReadyStatus().get(member.getId()) == null) {
             roomManager.getReadyStatus(event.roomId()).put(member.getId(), false);
-            roomManager.getSkipStatus(event.roomId()).put(member.getId(), false);
+            inGameManager.getSkipStatus(event.roomId()).put(member.getId(), false);
         }
     }
 }

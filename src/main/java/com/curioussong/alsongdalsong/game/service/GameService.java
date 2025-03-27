@@ -3,16 +3,17 @@ package com.curioussong.alsongdalsong.game.service;
 import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.board.BoardEventHandler;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
+import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
+import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
-import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,10 +23,12 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
-import java.util.concurrent.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -37,6 +40,7 @@ public class GameService {
     private final ApplicationEventPublisher eventPublisher;
 
     private final RoomManager roomManager;
+    private final InGameManager inGameManager;
     private final GameMessageSender gameMessageSender;
     private final GameTimerManager gameTimerManager;
     private final BoardEventHandler boardEventHandler;
@@ -52,158 +56,124 @@ public class GameService {
         }
         log.debug("All players are ready, proceeding to start the game.");
         eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
-        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
+        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
 
-        roomManager.initializeGameSetting(roomId);
-        startRound(channelId, roomId);
+        inGameManager.initializeGameSettings(room);
+        startRound(channelId, room, destination);
 
         // TODO : readyStatusMap.remove(roomId);
     }
 
-    public void startRound(Long channelId, Long roomId) {
-        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+    public void startRound(Long channelId, Room room, String destination) {
+        Long roomId = room.getId();
+        int currentRound = inGameManager.getCurrentRound(roomId);
+        log.info("Round : {} 진행중입니다.", currentRound);
 
-        log.info("Round : {} 진행중입니다.", roomManager.getCurrentRound(roomId));
-
-        // 최대 라운드 도달 시 종료
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        int nowRound = roomManager.getCurrentRound(roomId);
-        log.debug("nowRound in startRound Method : {}", nowRound);
-
-        String winner = findWinnerByScore(roomId, 20);
-
-        if(winner != null){
+        // 목표 지점 도달한 사용자 존재 시 종료
+        String winner = findWinnerByScore(roomId, 19);
+        if (winner != null) {
             log.info("Player {} reached 20 points, ending game.", winner);
             endGame(roomId, destination);
             return;
         }
-        // 전체 게임 종료 처리
-        if (nowRound == room.getMaxGameRound()+1) {
+
+        // 최대 라운드 도달 시 종료
+        if (currentRound == roomManager.getRoomInfo(roomId).getMaxGameRound()+1) {
             endGame(roomId, destination);
             return;
         }
 
-        gameTimerManager.initializeSchedulers(roomId);
+        // 다음 라운드 준비
+        gameTimerManager.initializeSchedulers(roomId); // 타이머 초기화
+        inGameManager.initializeRoundWinner(room); // 라운드 정답자 초기화
+        inGameManager.initializeSkipStatus(room); // 스킵 초기화
 
-        roomManager.getRoomInfo(roomId).getRoundWinner().put(roomId, ""); // 라운드 시작 시 현재 라운드 정답자 초기화
-
-        log.info("skip 상태 초기화 시작");
-
-        if (room.getMembers() == null) {
-            log.info("room.getMembers() is null!");
-        } else {
-            log.info("Member IDs: {}", room.getMembers());
-            System.out.flush(); // 로그 강제 출력
-        }
-
-        // skip 상태 초기화
-        roomManager.initializeSkipStatus(roomId);
-
-        log.info("{} 번째 라운드 정보 전송", roomManager.getCurrentRound(roomId));
-
-        log.debug("sendRoundInfo 호출됨 - destination: {}, roomId: {}", destination, roomId);
         // Todo : 하드코딩된 gameMode를 사용자가 설정한 값으로 불러오도록 수정 필요
-        gameMessageSender.sendRoundInfo(destination, roomManager.getCurrentRound(roomId), GameMode.FULL);
-        log.debug("sendRoundInfo 메시지 전송 완료 - round: {}", roomManager.getCurrentRound(roomId));
+        gameMessageSender.sendRoundInfo(destination, currentRound, GameMode.FULL);
 
         sendQuizInfo(destination, roomId);
-
-        log.info("카운트 다운 시작");
-        startCountdown(destination, roomId);
+        startCountdown(destination, channelId, roomId);
     }
 
-    public void startCountdown(String destination, Long roomId) {
+    public void startCountdown(String destination, Long channelId, Long roomId) {
         gameTimerManager.startCountdown(destination, roomId, () -> {
             // 카운트다운 완료 후 실행될 코드
             gameTimerManager.scheduleSongPlayTime(
                     destination,
-                    roomManager.getSong(roomId).getPlayTime(),
+                    inGameManager.getCurrentRoundSong(roomId).getPlayTime(),
                     roomId,
-                    () -> triggerEndEvent(destination)
+                    () -> triggerEndEvent(destination, channelId, roomId)
             );
-            roomManager.initAnswer(roomId);
-            roomManager.updateIsSongPlaying(roomId);
+            inGameManager.updateIsSongPlaying(roomId);
         });
     }
 
-    private void triggerEndEvent(String destination) {
-        log.info("EndEvent 트리거 활성화");
+    private void triggerEndEvent(String destination, Long channelId, Long roomId) {
+        log.debug("End event for channel {} in room {}", channelId, roomId);
 
-        Pattern pattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
-        Matcher matcher = pattern.matcher(destination);
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
 
-        if (matcher.matches()) {
-            Long channelId = Long.parseLong(matcher.group(1)); // 첫 번째 캡처 그룹 -> channelId
-            Long roomId = Long.parseLong(matcher.group(2)); // 두 번째 캡처 그룹 -> roomId
+        inGameManager.updateIsSongPlaying(roomId);
 
-            log.info("channelId: {}, roomdId : {}", destination, roomId);
+        boolean isWinnerExist = (inGameManager.getRoundWinner(roomId).get(roomId) != null);
+        String winner = inGameManager.getRoundWinner(roomId).get(roomId);
 
-            roomManager.updateIsSongPlaying(roomId);
+        gameMessageSender.sendNextMessage(destination,
+                winner,
+                isWinnerExist ? 4 : 0);
 
-            boolean isWinnerExist = !roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId).isEmpty();
-
-            gameMessageSender.sendNextMessage(destination,
-                    roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId),
-                    isWinnerExist ? 4 : 0);
-
-            if (isWinnerExist) {
-                handleSendingPositionMessage(destination, roomId);
-            } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
-                sendGameResult(destination, roomId, roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId));
-                try {
-                    Thread.sleep(3000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+        if (isWinnerExist) {
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-            roomManager.nextRound(roomId);
-            startRound(channelId, roomId);
-        } else {
-            log.info("Pattern did not match destination: {}", destination);
+            handleSendingPositionMessage(destination, roomId, winner);
+        } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
+            sendGameResult(destination, roomId, winner);
+            try {
+                Thread.sleep(3000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
+        inGameManager.nextRound(roomId);
+        inGameManager.updateIsAnswered(roomId);
+        startRound(channelId, room, destination);
     }
 
-    private void handleSendingPositionMessage(String destination, Long roomId) {
-        Map<String, Integer> userMovement = roomManager.getRoomInfo(roomId).getUserMovement();
-        Stack<String> userTurn = new Stack<>();
-        String firstMover = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
-        userTurn.push(firstMover);
+    private void handleSendingPositionMessage(String destination, Long roomId, String currentRoundWinner) {
+        Map<String, Integer> userMovement = inGameManager.getInGameInfo(roomId).getUserMovement();
+        Map<String, Integer> userScores = inGameManager.getInGameInfo(roomId).getScore();
+        while (userMovement.get(currentRoundWinner) > 0) {
+            userMovement.put(currentRoundWinner, userMovement.get(currentRoundWinner) - 1);
+            userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
+            gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
 
-        while (!userTurn.empty()) {
-            String mover = userTurn.pop();
-            while (userMovement.get(mover) > 0) {
-                String userWhoMove = roomManager.getRoomInfo(roomId).getRoundWinner().get(roomId);
-                userMovement.put(mover, userMovement.get(mover) - 1);
-                // 말이 이동하는 사람들의 현재 위치(점수) 갱신
-                Map<String, Integer> scoreMap = roomManager.getRoomInfo(roomId).getScore();
-                scoreMap.compute(mover, (key, value) -> (value == null) ? 1 : value + 1); // 현재는 앞으로만 가고 다른 이벤트 없으므로 +1
+            if (userScores.get(currentRoundWinner) >= 19) { // 목표 지점 도달 시
+                return;
+            }
 
-                gameMessageSender.sendUserPosition(destination, userWhoMove, scoreMap.get(userWhoMove));
-                if (roomManager.getRoomInfo(roomId).getScore().get(firstMover) >= 20) {
-                    return;
-                }
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-
-
+            try {
+                Thread.sleep(700);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         }
 
-        int playerCount = roomManager.getRoomInfo(roomId).getScore().size();
+        int playerCount = userScores.size();
 
         // 이벤트 생성 및 처리
-        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(firstMover, playerCount, roomId);
+        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(currentRoundWinner, playerCount, roomId);
         boardEventHandler.handleEvent(destination, roomId, eventResponse);
     }
 
     private void sendQuizInfo(String destination, Long roomId) {
-        gameMessageSender.sendQuizInfo(destination, roomManager.getSong(roomId).getUrl());
+        Song song = inGameManager.getCurrentRoundSong(roomId);
+        gameMessageSender.sendQuizInfo(destination, song.getUrl());
     }
 
     @Transactional
@@ -241,31 +211,33 @@ public class GameService {
     }
 
     private void sendGameResult(String destination, Long roomId, String userName) {
-        Song song = roomManager.getSong(roomId);
+        Song song = inGameManager.getCurrentRoundSong(roomId);
         gameMessageSender.sendGameResult(destination, userName, song);
     }
 
     public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
         String userAnswer = chatRequest.getRequest().getMessage();
-        Song song = roomManager.getSong(roomId);
+        Song song = inGameManager.getCurrentRoundSong(roomId);
+        log.info("current song: {}", song.getKorTitle());
         return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
     }
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
         // 이미 정답을 맞춘 라운드이면 통과
-        if (roomManager.isAnswered(roomId)) {
+        if (inGameManager.getInGameInfo(roomId).isAnswered()) {
             return;
         }
 
 //      int scoreToAdd = calculateScore(); // 추후 구현
         int scoreToAdd = 4;
-        roomManager.getRoomInfo(roomId).getUserMovement().put(userName, scoreToAdd); // 정답자 이동 예정 횟수 갱신
+        inGameManager.getInGameInfo(roomId).getUserMovement().put(userName, scoreToAdd); // 정답자 이동 예정 횟수 갱신
 
         // 방의 현재 라운드 정답자 저장
-        Map<Long, String> roundWinner = roomManager.getRoomInfo(roomId).getRoundWinner();
-        roundWinner.put(roomId, userName);
+        inGameManager.getInGameInfo(roomId).getRoundWinner().put(roomId, userName);
 
-        roomManager.setAnswer(roomId);
+        // 정답 맞춘 상태 처리
+        inGameManager.updateIsAnswered(roomId);
+
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
         gameTimerManager.cancelHintTimers(roomId);
 
@@ -277,18 +249,18 @@ public class GameService {
         Long memberId = memberService.getMemberByToken(username).getId();
 
         // 이미 스킵을 한 사용자라면
-        if (roomManager.isSkipped(roomId, memberId)) {
+        if (inGameManager.isSkipped(roomId, memberId)) {
             return;
         }
 
         // 노래가 재생 중일 때만 스킵 가능
-        if (!roomManager.getIsSongPlaying(roomId)) {
+        if (!inGameManager.getIsSongPlaying(roomId)) {
             return;
         }
 
         // 스킵 상태 변환
-        roomManager.setSkip(roomId, memberId);
-        int currentSkipCount = roomManager.raiseSkip(roomId);
+        inGameManager.setSkip(roomId, memberId);
+        int currentSkipCount = inGameManager.getSkipCount(roomId);
         String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
 
         Room room = roomRepository.findById(roomId)
@@ -304,7 +276,7 @@ public class GameService {
         if (currentSkipCount > participantCount / 2) {
             log.info("Skip count exceeded threshold, moving to next round.");
             gameTimerManager.cancelHintTimers(roomId);
-            gameTimerManager.cancelRoundTimerAndTriggerImmediately(roomId, () -> triggerEndEvent(destination));
+            gameTimerManager.cancelRoundTimerAndTriggerImmediately(roomId, () -> triggerEndEvent(destination, channelId, roomId));
         }
     }
 
@@ -331,12 +303,11 @@ public class GameService {
 
     public void updateSongYears(Long roomId, List<Integer> selectedYears) {
         roomManager.setSelectedYears(roomId, selectedYears);
-//        roomAndSelectedYears.put(roomId, selectedYears);
     }
 
     // 최고 점수를 가진 플레이어 찾기
     private String findWinnerByScore(Long roomId, int minScore) {
-        return roomManager.getRoomInfo(roomId).getScore().entrySet()
+        return inGameManager.getInGameInfo(roomId).getScore().entrySet()
                 .stream()
                 .filter(entry -> entry.getValue() >= minScore)
                 .max(Map.Entry.comparingByValue())
@@ -353,25 +324,14 @@ public class GameService {
         log.info("Game ended. Final winner: {}", finalWinner);
         gameMessageSender.sendGameEndMessage(destination, finalWinner);
 
+        // 인게임 정보 삭제
+        inGameManager.clear(roomId);
+
         // 멤버 상태 초기화
-        roomManager.initializeMemberStatus(roomId);
+        roomManager.initializeMemberReadyStatus(roomId);
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-
-        List<Long> memberIds = room.getMembers().stream()
-                .map(Member::getId).toList();
-        List<UserInfo> userInfoList = new ArrayList<>();
-
-        for (Long memberId : memberIds) {
-            Member member = memberService.getMemberById(memberId);
-            boolean isHost = memberId.equals(room.getHost().getId());
-
-            log.debug("User {} ready status in response: {}", member.getUsername(), false);
-
-            UserInfo userInfo = new UserInfo(member.getUsername(), false, isHost);
-            userInfoList.add(userInfo);
-        }
 
         eventPublisher.publishEvent(new GameStatusEvent(
                 roomRepository.findById(roomId)

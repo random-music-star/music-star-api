@@ -1,7 +1,9 @@
 package com.curioussong.alsongdalsong.game.timer;
 
+import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
+import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.util.KoreanConsonantExtractor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +26,7 @@ public class GameTimerManager {
     // 타이머 관련 상수
     private final Integer CONSONANT_HINT_TIME = 15;
     private final Integer SINGER_HINT_TIME = 30;
+    private final InGameManager inGameManager;
 
     // 방별 타이머 스케줄러 관리
     private Map<Long, ScheduledExecutorService> roomConsonantHintTimerSchedulers = new ConcurrentHashMap<>();
@@ -79,17 +82,15 @@ public class GameTimerManager {
     }
 
     private void sendConsonantHint(String destination, Long roomId) {
-        String consonants = KoreanConsonantExtractor.extractConsonants(
-                roomManager.getSong(roomId).getKorTitle()
-        );
+        Song song = inGameManager.getCurrentRoundSong(roomId);
+        String consonants = KoreanConsonantExtractor.extractConsonants(song.getKorTitle());
         gameMessageSender.sendHint(destination, consonants, null);
     }
 
     private void sendSingerHint(String destination, Long roomId) {
-        String consonants = KoreanConsonantExtractor.extractConsonants(
-                roomManager.getSong(roomId).getKorTitle()
-        );
-        gameMessageSender.sendHint(destination, consonants, roomManager.getSong(roomId).getArtist());
+        Song song = inGameManager.getCurrentRoundSong(roomId);
+        String consonants = KoreanConsonantExtractor.extractConsonants(song.getKorTitle());
+        gameMessageSender.sendHint(destination, consonants, song.getArtist());
     }
 
     public void cancelHintTimers(Long roomId) {

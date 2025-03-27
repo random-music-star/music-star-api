@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.room.service;
 
 import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
+import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
@@ -15,7 +16,6 @@ import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
-import com.curioussong.alsongdalsong.stomp.SessionManager;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +41,7 @@ public class RoomService {
     private final RoomYearRepository roomYearRepository;
     private final RoomGameRepository roomGameRepository;
     private final RoomManager roomManager;
-    private final SessionManager sessionManager;
+    private final InGameManager inGameManager;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -111,8 +111,8 @@ public class RoomService {
         room.removeMember(member);
         log.info("방 나가기 후 멤버 수: {}", room.getMembers().size());
         log.debug("방 멤버 목록 (나간 후): {}", room.getMembers().stream().map(Member::getUsername).toList());
-        roomManager.getSkipStatus(roomId).remove(member.getId());
         roomManager.getReadyStatus(roomId).remove(member.getId());
+        inGameManager.removeSkipStatusWhoLeaved(roomId, member.getId());
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room, RoomUpdatedEvent.ActionType.DELETED));
         log.debug("이벤트 발행 완료");
