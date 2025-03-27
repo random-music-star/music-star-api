@@ -88,7 +88,6 @@ public class GameMessageSender {
                 .type("timer")
                 .response(Response.builder()
                         .remainTime(countdown)
-                        .timestamp(System.currentTimeMillis())
                         .build())
                 .build();
 
@@ -101,7 +100,6 @@ public class GameMessageSender {
                 .type("quizInfo")
                 .response(QuizResponse.builder()
                         .songUrl(songUrl)
-                        .timestamp(System.currentTimeMillis())
                         .build())
                 .build());
     }

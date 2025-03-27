@@ -9,5 +9,4 @@ import lombok.Setter;
 @Builder
 public class QuizResponse {
     private String songUrl;
-    private Long timestamp;
 }

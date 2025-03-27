@@ -9,5 +9,4 @@ import lombok.Setter;
 @Builder
 public class Response {
     private Integer remainTime;
-    private Long timestamp;
 }
