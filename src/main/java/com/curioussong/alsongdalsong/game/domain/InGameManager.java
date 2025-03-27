@@ -26,13 +26,13 @@ public class InGameManager {
 
     public void initializeGameSettings(Room room) {
         InGameInfo inGameInfo = new InGameInfo();
+        inGameMap.put(room.getId(), inGameInfo);
         inGameInfo.setCurrentRound(1); // 라운드 초기화
         initializeScores(inGameInfo, room); // 점수 초기화
         initializeRoundWinner(room); // 정답자 초기화
         initializeUserMovement(inGameInfo, room); // 사용자 별 움직이는거리 초기화
         initializeSongs(inGameInfo, room); // 노래 세팅
         initializeSkipStatus(room); // 스킵 상태 초기화
-        inGameMap.put(room.getId(), inGameInfo);
     }
 
     private void initializeScores(InGameInfo inGameInfo, Room room) {
