@@ -130,4 +130,9 @@ public class RoomManager {
                         .build())
                 .build());
     }
+
+    public int getMaxGameRound(Long roomId) {
+        RoomInfo roomInfo = roomMap.get(roomId);
+        return roomInfo.getMaxGameRound();
+    }
 }

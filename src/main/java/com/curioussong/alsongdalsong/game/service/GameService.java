@@ -80,7 +80,7 @@ public class GameService {
         }
 
         // 최대 라운드 도달 시 종료
-        if (currentRound == roomManager.getRoomInfo(roomId).getMaxGameRound()+1) {
+        if (currentRound == roomManager.getMaxGameRound(roomId)+1) {
             endGame(roomId, destination);
             return;
         }
@@ -146,8 +146,8 @@ public class GameService {
     }
 
     private void handleSendingPositionMessage(String destination, Long roomId, String currentRoundWinner) {
-        Map<String, Integer> userMovement = inGameManager.getInGameInfo(roomId).getUserMovement();
-        Map<String, Integer> userScores = inGameManager.getInGameInfo(roomId).getScore();
+        Map<String, Integer> userMovement = inGameManager.getUserMovement(roomId);
+        Map<String, Integer> userScores = inGameManager.getScore(roomId);
         while (userMovement.get(currentRoundWinner) > 0) {
             userMovement.put(currentRoundWinner, userMovement.get(currentRoundWinner) - 1);
             userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
@@ -224,16 +224,16 @@ public class GameService {
 
     public void handleAnswer(String userName, Long channelId, Long roomId) {
         // 이미 정답을 맞춘 라운드이면 통과
-        if (inGameManager.getInGameInfo(roomId).isAnswered()) {
+        if (inGameManager.isAnswered(roomId)) {
             return;
         }
 
 //      int scoreToAdd = calculateScore(); // 추후 구현
         int scoreToAdd = 4;
-        inGameManager.getInGameInfo(roomId).getUserMovement().put(userName, scoreToAdd); // 정답자 이동 예정 횟수 갱신
+        inGameManager.getUserMovement(roomId).put(userName, scoreToAdd); // 정답자 이동 예정 횟수 갱신
 
         // 방의 현재 라운드 정답자 저장
-        inGameManager.getInGameInfo(roomId).getRoundWinner().put(roomId, userName);
+        inGameManager.getRoundWinner(roomId).put(roomId, userName);
 
         // 정답 맞춘 상태 처리
         inGameManager.updateIsAnswered(roomId);
@@ -307,7 +307,7 @@ public class GameService {
 
     // 최고 점수를 가진 플레이어 찾기
     private String findWinnerByScore(Long roomId, int minScore) {
-        return inGameManager.getInGameInfo(roomId).getScore().entrySet()
+        return inGameManager.getScore(roomId).entrySet()
                 .stream()
                 .filter(entry -> entry.getValue() >= minScore)
                 .max(Map.Entry.comparingByValue())

@@ -23,9 +23,6 @@ public class UserJoinedEventListener {
         Member member = memberService.getMemberByToken(event.username());
         // host는 방을 만들면서 status가 초기화 되어 있음.
         // host 외에 다른 사람이 방에 입장할 때 status 설정 해줘야 함.
-        if (roomManager.getRoomInfo(event.roomId()).getMemberReadyStatus().get(member.getId()) == null) {
-            roomManager.getReadyStatus(event.roomId()).put(member.getId(), false);
-            inGameManager.getSkipStatus(event.roomId()).put(member.getId(), false);
-        }
+        roomManager.getReadyStatus(event.roomId()).putIfAbsent(member.getId(), false);
     }
 }

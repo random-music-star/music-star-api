@@ -169,4 +169,9 @@ public class InGameManager {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getMemberSkipStatus();
     }
+
+    public boolean isAnswered(Long roomId) {
+        InGameInfo inGameInfo = getInGameInfo(roomId);
+        return inGameInfo.isAnswered();
+    }
 }

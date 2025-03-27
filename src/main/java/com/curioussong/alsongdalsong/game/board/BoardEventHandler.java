@@ -144,7 +144,7 @@ public class BoardEventHandler {
 
     private void applyEventEffect(String destination, Long roomId, BoardEventType eventType, String trigger, String target) {
         // 현재 위치 가져오기
-        int currentPosition = inGameManager.getInGameInfo(roomId).getScore().getOrDefault(trigger, 0);
+        int currentPosition = inGameManager.getScore(roomId).getOrDefault(trigger, 0);
 
         try {
             switch (eventType) {
@@ -177,7 +177,7 @@ public class BoardEventHandler {
     private void handleSwapEvent(String destination, Long roomId, String trigger, int currentPosition) {
 
         // 방에 있는 플레이어 중 하나 선택
-        Map<String, Integer> scores = inGameManager.getInGameInfo(roomId).getScore();
+        Map<String, Integer> scores = inGameManager.getScore(roomId);
 
         List<String> others = new ArrayList<>();
 
@@ -238,25 +238,25 @@ public class BoardEventHandler {
 
     private void updatePositionAndSendMessage(String destination, Long roomId, String trigger, int newPosition) {
         // 새 위치 업데이트 (RoomManager 호출)
-        inGameManager.getInGameInfo(roomId).getScore().put(trigger, newPosition);
+        inGameManager.getScore(roomId).put(trigger, newPosition);
         // 위치 변경 메시지 전송 (GameMessageSender 호출)
         gameMessageSender.sendUserPosition(destination, trigger, newPosition);
     }
 
     private void handlePullEvent(Long roomId, String destination, BoardEventType eventType, String trigger, String target) {
-        Map<String, Integer> userScore = inGameManager.getInGameInfo(roomId).getScore();
+        Map<String, Integer> userScore = inGameManager.getScore(roomId);
         int targetPosition = userScore.get(trigger);
         updatePositionAndSendMessage(destination, roomId, target, targetPosition);
     }
 
     private void handleMagnetEvent(String destination, Long roomId, String trigger) {
         String target = findMagnetTarget(trigger, roomId);
-        int targetPosition = inGameManager.getInGameInfo(roomId).getScore().get(target);
+        int targetPosition = inGameManager.getScore(roomId).get(target);
         updatePositionAndSendMessage(destination, roomId, trigger, targetPosition);
     }
 
     private String findMagnetTarget(String trigger, Long roomId) {
-        Map<String, Integer> userScore = inGameManager.getInGameInfo(roomId).getScore();
+        Map<String, Integer> userScore = inGameManager.getScore(roomId);
         int triggerPosition = userScore.get(trigger);
         return userScore.entrySet().stream()
                 .filter(entry -> !entry.getKey().equals(trigger))
