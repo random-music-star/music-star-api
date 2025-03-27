@@ -2,10 +2,7 @@ package com.curioussong.alsongdalsong.room.controller;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
-import com.curioussong.alsongdalsong.room.dto.CreateRequest;
-import com.curioussong.alsongdalsong.room.dto.CreateResponse;
-import com.curioussong.alsongdalsong.room.dto.RoomDTO;
-import com.curioussong.alsongdalsong.room.dto.UpdateRequest;
+import com.curioussong.alsongdalsong.room.dto.*;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -43,5 +40,13 @@ public class RoomController {
             @RequestParam(defaultValue = "8") int size) {
         Page<RoomDTO> roomsPage = roomService.getRooms(page, size);
         return ResponseEntity.ok(roomsPage);
+    }
+
+    @PostMapping("/enter")
+    public ResponseEntity<EnterRoomResponse> enterRoom(
+            @RequestBody EnterRoomRequest request
+    ){
+        EnterRoomResponse response = roomService.enterRoom(request);
+        return ResponseEntity.ok(response);
     }
 }

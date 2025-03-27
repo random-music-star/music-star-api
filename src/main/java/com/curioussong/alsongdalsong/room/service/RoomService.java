@@ -23,8 +23,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -214,5 +216,26 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getStatus() == Room.RoomStatus.FINISHED;
+    }
+
+    @Transactional
+    public EnterRoomResponse enterRoom(EnterRoomRequest request) {
+        Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "존재하지 않는 방 아이디입니다."
+                ));
+
+        if(!room.getPassword().equals(request.getPassword())) {
+            return EnterRoomResponse.builder()
+                    .roomId(request.getRoomId())
+                    .success(false)
+                    .build();
+        }
+
+        return EnterRoomResponse.builder()
+                .roomId(request.getRoomId())
+                .success(true)
+                .build();
     }
 }
