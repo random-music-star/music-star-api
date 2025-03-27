@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.room.domain;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
+import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -22,8 +23,8 @@ import java.util.List;
 public class Room {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(length = 26)
+    private String id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "host_id", nullable = true)
@@ -59,6 +60,12 @@ public class Room {
     @OneToMany(mappedBy = "room", fetch = FetchType.EAGER)
     private List<Member> members = new ArrayList<>();
 
+    @PrePersist
+    public void prePersist() {
+        if(this.id==null) {
+            this.id = UlidCreator.getUlid().toString();
+        }
+    }
 
     public enum RoomStatus {
         WAITING, IN_PROGRESS, FINISHED

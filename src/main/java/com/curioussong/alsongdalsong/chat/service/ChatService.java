@@ -31,7 +31,7 @@ public class ChatService {
                 .build();
     }
 
-    public ChatResponse roomChatMessage(ChatRequest chatRequest, Long channelId, Long roomId) {
+    public ChatResponse roomChatMessage(ChatRequest chatRequest, Long channelId, String roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
 

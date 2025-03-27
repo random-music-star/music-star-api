@@ -46,7 +46,7 @@ public class GameService {
     private final BoardEventHandler boardEventHandler;
 
     @Transactional
-    public void startGame(Long channelId, Long roomId) {
+    public void startGame(Long channelId, String roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         log.debug("Starting game in room {}", roomId);
@@ -57,7 +57,7 @@ public class GameService {
         log.debug("All players are ready, proceeding to start the game.");
         eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
 
-        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
 
         inGameManager.initializeGameSettings(room);
@@ -139,7 +139,7 @@ public class GameService {
         startRound(channelId, room, destination);
     }
 
-    private void handleSendingPositionMessage(String destination, Long roomId, String currentRoundWinner) {
+    private void handleSendingPositionMessage(String destination, String roomId, String currentRoundWinner) {
         Map<String, Integer> userMovement = inGameManager.getUserMovement(roomId);
         Map<String, Integer> userScores = inGameManager.getScore(roomId);
         while (userMovement.get(currentRoundWinner) > 0) {
@@ -166,8 +166,8 @@ public class GameService {
     }
 
     @Transactional
-    public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, Long roomId) {
-        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+    public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, String roomId) {
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
@@ -199,19 +199,19 @@ public class GameService {
         gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
     }
 
-    private void sendGameResult(String destination, Long roomId, String userName) {
+    private void sendGameResult(String destination, String roomId, String userName) {
         Song song = inGameManager.getCurrentRoundSong(roomId);
         gameMessageSender.sendGameResult(destination, userName, song);
     }
 
-    public boolean checkAnswer(ChatRequest chatRequest, Long roomId) {
+    public boolean checkAnswer(ChatRequest chatRequest, String roomId) {
         String userAnswer = chatRequest.getRequest().getMessage();
         Song song = inGameManager.getCurrentRoundSong(roomId);
         log.info("current song: {}", song.getKorTitle());
         return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
     }
 
-    public void handleAnswer(String userName, Long channelId, Long roomId) {
+    public void handleAnswer(String userName, Long channelId, String roomId) {
         // 이미 정답을 맞춘 라운드이면 통과
         if (inGameManager.isAnswered(roomId)) {
             return;
@@ -227,14 +227,14 @@ public class GameService {
         // 정답 맞춘 상태 처리
         inGameManager.updateIsAnswered(roomId);
 
-        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         gameTimerManager.cancelHintTimers(roomId);
 
         sendGameResult(destination, roomId, userName);
     }
 
     @Transactional
-    public void incrementSkipCount(Long roomId, Long channelId, String username) {
+    public void incrementSkipCount(String roomId, Long channelId, String username) {
         Long memberId = memberService.getMemberByToken(username).getId();
 
         // 이미 스킵을 한 사용자라면
@@ -250,7 +250,7 @@ public class GameService {
         // 스킵 상태 변환
         inGameManager.setSkip(roomId, memberId);
         int currentSkipCount = inGameManager.getSkipCount(roomId);
-        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
@@ -271,7 +271,7 @@ public class GameService {
 
 //    Todo: 방에 입장한 유저만 레디 상태 변경이 가능하도록 변경 필요
     @Transactional
-    public void toggleReady(String username, Long channelId, Long roomId) {
+    public void toggleReady(String username, Long channelId, String roomId) {
         Map<Long, Boolean> roomReadyStatus = roomManager.getReadyStatus(roomId);
         Member member = memberService.getMemberByToken(username);
         boolean currentReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(member.getId(), false));
@@ -284,18 +284,18 @@ public class GameService {
 
         log.debug("Room {} ready status map: {}", roomId, roomReadyStatus);
 
-        String destination = String.format("/topic/channel/%d/room/%d", channelId, roomId);
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         sendUserInfoToSubscriber(destination, room);
     }
 
-    public void updateSongYears(Long roomId, List<Integer> selectedYears) {
+    public void updateSongYears(String roomId, List<Integer> selectedYears) {
         roomManager.setSelectedYears(roomId, selectedYears);
     }
 
     // 최고 점수를 가진 플레이어 찾기
-    private String findWinnerByScore(Long roomId, int minScore) {
+    private String findWinnerByScore(String roomId, int minScore) {
         return inGameManager.getScore(roomId).entrySet()
                 .stream()
                 .filter(entry -> entry.getValue() >= minScore)

@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Getter
 @Setter
 public class RoomInfo {
-    private Long roomId;
+    private String roomId;
     private Long channelId;
     private int maxGameRound;
     private List<Integer> selectedYears;
@@ -22,7 +22,7 @@ public class RoomInfo {
     // memberId에 따른 ready상태
     private Map<Long, Boolean> memberReadyStatus;
 
-    public RoomInfo(Long roomId, Long channelId) {
+    public RoomInfo(String roomId, Long channelId) {
         this.roomId = roomId;
         this.channelId = channelId;
         this.maxGameRound = 20; // TODO : 임의로 설정

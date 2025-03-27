@@ -57,8 +57,8 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         Pattern channelPattern = Pattern.compile("^/topic/channel/(\\d+)$");
         Matcher channelMatcher = channelPattern.matcher(destination);
 
-        // 방 토픽 구독 패턴 (예: /topic/channel/1/room/2)
-        Pattern roomPattern = Pattern.compile("^/topic/channel/(\\d+)/room/(\\d+)$");
+        // 방 토픽 구독 패턴 (예: /topic/channel/1/room/01HPQWZ1V7SGZF9D4K7X3RY2T1)
+        Pattern roomPattern = Pattern.compile("^/topic/channel/(\\d+)/room/([A-Z0-9]{26})$");
         Matcher roomMatcher = roomPattern.matcher(destination);
 
         if (channelMatcher.find()) {
@@ -66,13 +66,13 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
             log.debug("channel id {}, 채널 토픽 구독", channelId);
 
             // 채널 입장을 위한 세션 정보 등록 (roomId는 -1로)
-            sessionManager.addSessionId(sessionId, channelId, -1L, userName);
+            sessionManager.addSessionId(sessionId, channelId, "-1", userName);
         }
 
         // 방 토픽 구독인 경우 (방 입장)
         else if (roomMatcher.find()) {
             Long channelId = Long.parseLong(roomMatcher.group(1));
-            Long roomId = Long.parseLong(roomMatcher.group(2));
+            String roomId = roomMatcher.group(2);
 
             log.debug("room id {}, It's work when subscribe the topic", roomId);
 
@@ -87,7 +87,7 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         }
     }
 
-    public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, Long roomId) {
+    public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, String roomId) {
         gameService.sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
     }
 

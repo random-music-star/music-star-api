@@ -23,7 +23,7 @@ public class ChatController {
 
     @MessageMapping("/channel/{channelId}/room/{roomId}")
     @SendTo("/topic/channel/{channelId}/room/{roomId}")
-    public ChatResponse handleRoomChat(ChatRequest chatRequest, @DestinationVariable Long channelId, @DestinationVariable Long roomId) {
+    public ChatResponse handleRoomChat(ChatRequest chatRequest, @DestinationVariable Long channelId, @DestinationVariable String roomId) {
         return chatService.roomChatMessage(chatRequest, channelId, roomId);
     }
 }

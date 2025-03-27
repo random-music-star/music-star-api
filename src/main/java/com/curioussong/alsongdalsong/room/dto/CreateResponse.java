@@ -6,5 +6,5 @@ import lombok.Getter;
 @Getter
 @Builder
 public class CreateResponse {
-    private Long roomId;
+    private String roomId;
 }

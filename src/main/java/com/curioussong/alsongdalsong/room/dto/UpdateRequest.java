@@ -9,7 +9,7 @@ import java.util.List;
 @Getter
 @Builder
 public class UpdateRequest {
-    private Long roomId;
+    private String roomId;
     private String title;
     private String format;
     private String password;

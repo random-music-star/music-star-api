@@ -13,7 +13,7 @@ public class RoomGameService {
     private final RoomGameRepository roomGameRepository;
 
     @Transactional
-    public RoomGame getRoomGameByRoomId(Long roomId) {
+    public RoomGame getRoomGameByRoomId(String roomId) {
         return roomGameRepository.findByRoomId(roomId);
     }
 }

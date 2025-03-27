@@ -29,12 +29,12 @@ public class GameTimerManager {
     private final InGameManager inGameManager;
 
     // 방별 타이머 스케줄러 관리
-    private Map<Long, ScheduledExecutorService> roomConsonantHintTimerSchedulers = new ConcurrentHashMap<>();
-    private Map<Long, ScheduledExecutorService> roomSingerHintTimerSchedulers = new ConcurrentHashMap<>();
-    private Map<Long, ScheduledExecutorService> roomRoundTimerSchedulers = new ConcurrentHashMap<>();
-    private final Map<Long, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>();
+    private Map<String, ScheduledExecutorService> roomConsonantHintTimerSchedulers = new ConcurrentHashMap<>();
+    private Map<String, ScheduledExecutorService> roomSingerHintTimerSchedulers = new ConcurrentHashMap<>();
+    private Map<String, ScheduledExecutorService> roomRoundTimerSchedulers = new ConcurrentHashMap<>();
+    private final Map<String, ScheduledExecutorService> roomSchedulers = new ConcurrentHashMap<>();
 
-    public void startCountdown(String destination, Long roomId, Runnable onCountdownComplete) {
+    public void startCountdown(String destination, String roomId, Runnable onCountdownComplete) {
         new Thread(() -> {
             try {
                 for (int i = 3; i > 0; i--) {
@@ -50,7 +50,7 @@ public class GameTimerManager {
         }).start();
     }
 
-    public void scheduleSongPlayTime(String destination, int waitTimeInSeconds, Long roomId, Runnable endRoundAction) {
+    public void scheduleSongPlayTime(String destination, int waitTimeInSeconds, String roomId, Runnable endRoundAction) {
         initializeSchedulers(roomId);
 
         // 자음 힌트 스케줄링
@@ -75,25 +75,25 @@ public class GameTimerManager {
         );
     }
 
-    public void initializeSchedulers(Long roomId) {
+    public void initializeSchedulers(String roomId) {
         roomConsonantHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
         roomSingerHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
         roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
     }
 
-    private void sendConsonantHint(String destination, Long roomId) {
+    private void sendConsonantHint(String destination, String roomId) {
         Song song = inGameManager.getCurrentRoundSong(roomId);
         String consonants = KoreanConsonantExtractor.extractConsonants(song.getKorTitle());
         gameMessageSender.sendHint(destination, consonants, null);
     }
 
-    private void sendSingerHint(String destination, Long roomId) {
+    private void sendSingerHint(String destination, String roomId) {
         Song song = inGameManager.getCurrentRoundSong(roomId);
         String consonants = KoreanConsonantExtractor.extractConsonants(song.getKorTitle());
         gameMessageSender.sendHint(destination, consonants, song.getArtist());
     }
 
-    public void cancelHintTimers(Long roomId) {
+    public void cancelHintTimers(String roomId) {
         if (roomConsonantHintTimerSchedulers.containsKey(roomId)) {
             roomConsonantHintTimerSchedulers.get(roomId).shutdownNow();
         }
@@ -103,14 +103,14 @@ public class GameTimerManager {
         }
     }
 
-    public void cancelRoundTimerAndTriggerImmediately(Long roomId, Runnable onRoundEnd) {
+    public void cancelRoundTimerAndTriggerImmediately(String roomId, Runnable onRoundEnd) {
         if (roomRoundTimerSchedulers.containsKey(roomId)) {
             roomRoundTimerSchedulers.get(roomId).shutdownNow();
         }
         onRoundEnd.run();
     }
 
-    public void shutdownAllTimers(Long roomId) {
+    public void shutdownAllTimers(String roomId) {
         cancelHintTimers(roomId);
 
         if (roomRoundTimerSchedulers.containsKey(roomId)) {

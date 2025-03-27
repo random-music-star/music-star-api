@@ -19,7 +19,7 @@ public class GameController {
 
     @MessageMapping("/channel/{channelId}/room/{roomId}/start")
     @SendTo("/topic/channel/{channelId}/room/{roomId}")
-    public void handleRequest(StartRequest request, @DestinationVariable Long channelId, @DestinationVariable Long roomId) {
+    public void handleRequest(StartRequest request, @DestinationVariable Long channelId, @DestinationVariable String roomId) {
         if (request.getType().equals("gameStart")) {
             gameService.startGame(channelId, roomId);
         }
@@ -27,7 +27,7 @@ public class GameController {
 
     @MessageMapping("/channel/{channelId}/room/{roomId}/ready")
     @SendTo("/topic/channel/{channelId}/room/{roomId}")
-    public void toggleReady(ReadyRequest request, @DestinationVariable Long channelId, @DestinationVariable Long roomId) {
+    public void toggleReady(ReadyRequest request, @DestinationVariable Long channelId, @DestinationVariable String roomId) {
         gameService.toggleReady(request.getUsername(), channelId, roomId);
     }
 }

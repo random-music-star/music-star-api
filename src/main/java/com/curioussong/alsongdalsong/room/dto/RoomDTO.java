@@ -9,7 +9,7 @@ import java.util.List;
 @Getter
 @Builder
 public class RoomDTO {
-    private Long id;
+    private String id;
     private String title;
     private String hostName;
     private String format;

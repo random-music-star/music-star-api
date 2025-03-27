@@ -11,10 +11,10 @@ import java.util.List;
 
 public interface RoomGameRepository extends JpaRepository<RoomGame, Long> {
 
-    RoomGame findByRoomId(Long roomId);
+    RoomGame findByRoomId(String roomId);
 
     @Query("SELECT rg.game.mode FROM RoomGame rg WHERE rg.room.id = :roomId")
-    List<GameMode> findGameModesByRoomId(@Param("roomId") Long roomId);
+    List<GameMode> findGameModesByRoomId(@Param("roomId") String roomId);
 
     void deleteAllByRoom(Room room);
 }

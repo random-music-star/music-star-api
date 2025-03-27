@@ -22,7 +22,7 @@ public class BoardEventHandler {
     private final GameMessageSender gameMessageSender;
     private final InGameManager inGameManager;
 
-    public BoardEventResponseDTO generateEvent(String trigger, int playerCount, Long roomId) {
+    public BoardEventResponseDTO generateEvent(String trigger, int playerCount, String roomId) {
         boolean isSoloPlay = (playerCount == 1);
 
         BoardEventType eventType;
@@ -61,7 +61,7 @@ public class BoardEventHandler {
                 .build();
     }
 
-    public void handleEvent(String destination, Long roomId, BoardEventResponseDTO eventResponseDTO) {
+    public void handleEvent(String destination, String roomId, BoardEventResponseDTO eventResponseDTO) {
 
         try {
             // 1. 이벤트 트리거 메시지 전송
@@ -99,7 +99,7 @@ public class BoardEventHandler {
         }
     }
 
-    private String findPullEventTarget(int pullDirection, Long roomId, String trigger) {
+    private String findPullEventTarget(int pullDirection, String roomId, String trigger) {
         Map<String, Integer> userScore = inGameManager.getScore(roomId);
         int triggerPosition = userScore.get(trigger);
 
@@ -142,7 +142,7 @@ public class BoardEventHandler {
         return target;
     }
 
-    private void applyEventEffect(String destination, Long roomId, BoardEventType eventType, String trigger, String target) {
+    private void applyEventEffect(String destination, String roomId, BoardEventType eventType, String trigger, String target) {
         // 현재 위치 가져오기
         int currentPosition = inGameManager.getScore(roomId).getOrDefault(trigger, 0);
 
@@ -174,7 +174,7 @@ public class BoardEventHandler {
     }
 
     // 랜덤한 플레이어와 자리 교체
-    private void handleSwapEvent(String destination, Long roomId, String trigger, int currentPosition) {
+    private void handleSwapEvent(String destination, String roomId, String trigger, int currentPosition) {
 
         // 방에 있는 플레이어 중 하나 선택
         Map<String, Integer> scores = inGameManager.getScore(roomId);
@@ -202,25 +202,25 @@ public class BoardEventHandler {
 
     }
 
-    private void handleWarpEvent(String destination, Long roomId, String trigger) {
+    private void handleWarpEvent(String destination, String roomId, String trigger) {
         int newPosition = ThreadLocalRandom.current().nextInt(0, 16);
         log.debug("nowPosition:{}", newPosition);
         updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
-    private void handleBombEvent(String destination, Long roomId, String trigger, int currentPosition) {
+    private void handleBombEvent(String destination, String roomId, String trigger, int currentPosition) {
         int bombMove = 5;
         int newPosition = Math.max(0, currentPosition - bombMove);
         updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
-    private void handleCloverEvent(String destination, Long roomId, String trigger, int currentPosition) {
+    private void handleCloverEvent(String destination, String roomId, String trigger, int currentPosition) {
         int cloverMove = 5;
         int newPosition = currentPosition + cloverMove;
         updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
-    private void handlePlusEvent(String destination, Long roomId, String trigger, int currentPosition) {
+    private void handlePlusEvent(String destination, String roomId, String trigger, int currentPosition) {
         // 1~2칸 앞으로 이동
         int plusAmount = ThreadLocalRandom.current().nextInt(1, 3);
         int newPosition = currentPosition + plusAmount;
@@ -228,7 +228,7 @@ public class BoardEventHandler {
         updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
-    private void handleMinusEvent(String destination, Long roomId, String trigger, int currentPosition) {
+    private void handleMinusEvent(String destination, String roomId, String trigger, int currentPosition) {
         // 1칸 or 2칸 뒤로 이동
         int minusAmount = ThreadLocalRandom.current().nextInt(1, 3);
         int newPosition = Math.max(0, currentPosition - minusAmount);
@@ -236,26 +236,26 @@ public class BoardEventHandler {
         updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
-    private void updatePositionAndSendMessage(String destination, Long roomId, String trigger, int newPosition) {
+    private void updatePositionAndSendMessage(String destination, String roomId, String trigger, int newPosition) {
         // 새 위치 업데이트 (RoomManager 호출)
         inGameManager.getScore(roomId).put(trigger, newPosition);
         // 위치 변경 메시지 전송 (GameMessageSender 호출)
         gameMessageSender.sendUserPosition(destination, trigger, newPosition);
     }
 
-    private void handlePullEvent(Long roomId, String destination, BoardEventType eventType, String trigger, String target) {
+    private void handlePullEvent(String roomId, String destination, BoardEventType eventType, String trigger, String target) {
         Map<String, Integer> userScore = inGameManager.getScore(roomId);
         int targetPosition = userScore.get(trigger);
         updatePositionAndSendMessage(destination, roomId, target, targetPosition);
     }
 
-    private void handleMagnetEvent(String destination, Long roomId, String trigger) {
+    private void handleMagnetEvent(String destination, String roomId, String trigger) {
         String target = findMagnetTarget(trigger, roomId);
         int targetPosition = inGameManager.getScore(roomId).get(target);
         updatePositionAndSendMessage(destination, roomId, trigger, targetPosition);
     }
 
-    private String findMagnetTarget(String trigger, Long roomId) {
+    private String findMagnetTarget(String trigger, String roomId) {
         Map<String, Integer> userScore = inGameManager.getScore(roomId);
         int triggerPosition = userScore.get(trigger);
         return userScore.entrySet().stream()

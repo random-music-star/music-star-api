@@ -1,4 +1,4 @@
 package com.curioussong.alsongdalsong.room.event;
 
-public record UserJoinedEvent (Long roomId, String sessionId, String username){
+public record UserJoinedEvent (String roomId, String sessionId, String username){
 }

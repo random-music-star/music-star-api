@@ -2,5 +2,5 @@ package com.curioussong.alsongdalsong.game.event;
 
 import java.util.List;
 
-public record YearSelectionEvent(Long roomId, List<Integer> selectedYears) {
+public record YearSelectionEvent(String roomId, List<Integer> selectedYears) {
 }

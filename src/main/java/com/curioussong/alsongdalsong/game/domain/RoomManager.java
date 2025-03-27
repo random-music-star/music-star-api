@@ -22,14 +22,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RoomManager {
 
-    private final Map<Long, RoomInfo> roomMap = new ConcurrentHashMap<>();
+    private final Map<String, RoomInfo> roomMap = new ConcurrentHashMap<>();
 
     private final RoomYearRepository roomYearRepository;
     private final SimpMessagingTemplate messagingTemplate;
     private final RoomGameRepository roomGameRepository;
 
     // 방 정보 반환
-    public RoomInfo getRoomInfo(Long roomId) {
+    public RoomInfo getRoomInfo(String roomId) {
         return roomMap.get(roomId);
     }
 
@@ -61,12 +61,12 @@ public class RoomManager {
     }
 
     // 방의 노래년도 리스트 반환
-    public List<Integer> getSelectedYears(Long roomId) {
+    public List<Integer> getSelectedYears(String roomId) {
         return getRoomInfo(roomId).getSelectedYears();
     }
 
     // 방의 멤버 레디 상태 초기화 (ready → false)
-    public void initializeMemberReadyStatus(Long roomId) {
+    public void initializeMemberReadyStatus(String roomId) {
         RoomInfo roomInfo = getRoomInfo(roomId);
         Map<Long, Boolean> readyMember = roomInfo.getMemberReadyStatus();
         for (Long memberId : readyMember.keySet()) {
@@ -75,7 +75,7 @@ public class RoomManager {
     }
 
     // 방 레디 체크
-    public boolean areAllPlayersReady(Long roomId) {
+    public boolean areAllPlayersReady(String roomId) {
         RoomInfo roomInfo = getRoomInfo(roomId);
         Map<Long, Boolean> memberToInfo = roomInfo.getMemberReadyStatus();
 
@@ -89,30 +89,30 @@ public class RoomManager {
     }
 
     // 해당 멤버의 ready 상태 반환
-    public boolean getReady(Long roomId, Long memberId) {
+    public boolean getReady(String roomId, Long memberId) {
         RoomInfo roomInfo = roomMap.get(roomId);
         return roomInfo.getMemberReadyStatus().get(memberId);
     }
 
     // Ready 상태 Map 반환
-    public Map<Long, Boolean> getReadyStatus(Long roomId) {
+    public Map<Long, Boolean> getReadyStatus(String roomId) {
         RoomInfo roomInfo = roomMap.get(roomId);
         return roomInfo.getMemberReadyStatus();
     }
 
-    public void setSelectedYears(Long roomId, List<Integer> selectedYears) {
+    public void setSelectedYears(String roomId, List<Integer> selectedYears) {
         RoomInfo roomInfo = roomMap.get(roomId);
         roomInfo.setSelectedYears(selectedYears);
     }
 
     public void updateRoomInfo(Room room, List<Integer> updatedSelectedYears) {
-        Long roomId = room.getId();
+        String roomId = room.getId();
         RoomInfo roomInfo = roomMap.get(roomId);
 
         log.info("Updating RoomInfo for roomId: {}", roomId);
         roomInfo.setSelectedYears(updatedSelectedYears);
 
-        String destination = String.format("/topic/channel/%d/room/%d", roomInfo.getChannelId(), roomId);
+        String destination = String.format("/topic/channel/%d/room/%s", roomInfo.getChannelId(), roomId);
         List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
 
 
@@ -131,7 +131,7 @@ public class RoomManager {
                 .build());
     }
 
-    public int getMaxGameRound(Long roomId) {
+    public int getMaxGameRound(String roomId) {
         RoomInfo roomInfo = roomMap.get(roomId);
         return roomInfo.getMaxGameRound();
     }

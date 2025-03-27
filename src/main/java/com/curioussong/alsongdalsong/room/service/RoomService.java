@@ -77,7 +77,7 @@ public class RoomService {
     }
 
     @Transactional
-    public void joinRoom(Long roomId, String sessionId, String userName) {
+    public void joinRoom(String roomId, String sessionId, String userName) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
 
@@ -91,7 +91,7 @@ public class RoomService {
     }
 
     @Transactional
-    public void leaveRoom(Long roomId, String userName) {
+    public void leaveRoom(String roomId, String userName) {
         log.debug("방 나가기 시작 - roomId: {}, userName: {}", roomId, userName);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
@@ -180,13 +180,13 @@ public class RoomService {
         return roomPage.map(Room::toDto);
     }
 
-    public boolean isRoomFull(Long roomId) {
+    public boolean isRoomFull(String roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getMembers().size() == room.getMaxPlayer();
     }
 
-    public boolean isRoomInProgress(Long roomId) {
+    public boolean isRoomInProgress(String roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getStatus() == Room.RoomStatus.IN_PROGRESS;
@@ -197,7 +197,7 @@ public class RoomService {
         Page<RoomDTO> roomPage = getRooms(0, 8);
 
         for (RoomDTO roomDTO : roomPage.getContent()) {
-            Long roomId = roomDTO.getId();
+            String roomId = roomDTO.getId();
             List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
             roomDTO.setGameModes(gameModes);
         }
@@ -210,7 +210,7 @@ public class RoomService {
                 .build();
     }
 
-    public boolean isRoomFinished(Long roomId) {
+    public boolean isRoomFinished(String roomId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getStatus() == Room.RoomStatus.FINISHED;

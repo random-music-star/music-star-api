@@ -20,7 +20,7 @@ public class InGameManager {
 
     private final RoomGameRepository roomGameRepository;
 
-    private final Map<Long, InGameInfo> inGameMap = new ConcurrentHashMap<>();
+    private final Map<String, InGameInfo> inGameMap = new ConcurrentHashMap<>();
     private final SongService songService;
     private final RoomManager roomManager;
 
@@ -80,97 +80,97 @@ public class InGameManager {
         inGameInfo.getRoundWinner().clear();
     }
 
-    public InGameInfo getInGameInfo(Long roomId) {
+    public InGameInfo getInGameInfo(String roomId) {
         return inGameMap.get(roomId);
     }
 
-    public int getCurrentRound(Long roomId) {
+    public int getCurrentRound(String roomId) {
         return getInGameInfo(roomId).getCurrentRound();
     }
 
-    public void nextRound(Long roomId) {
+    public void nextRound(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         inGameInfo.setCurrentRound(inGameInfo.getCurrentRound() + 1);
     }
 
-    public void updateIsAnswered(Long roomId) {
+    public void updateIsAnswered(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         inGameInfo.setAnswered(!inGameInfo.isAnswered());
     }
 
-    public Song getCurrentRoundSong(Long roomId) {
+    public Song getCurrentRoundSong(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         int currentRound = inGameInfo.getCurrentRound();
         return inGameInfo.getRoundInfo().get(currentRound).getSecond();
     }
 
-    public boolean isSkipped(Long roomId, Long memberId) {
+    public boolean isSkipped(String roomId, Long memberId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getMemberSkipStatus().get(memberId);
     }
 
-    public void setSkip(Long roomId, Long memberId) {
+    public void setSkip(String roomId, Long memberId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         inGameInfo.getMemberSkipStatus().put(memberId, true);
         inGameInfo.setSkipCount(inGameInfo.getSkipCount() + 1);
     }
 
-    public int getSkipCount(Long roomId) {
+    public int getSkipCount(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getSkipCount();
     }
 
-    public Map<Long, Boolean> getSkipStatus(Long roomId) {
+    public Map<Long, Boolean> getSkipStatus(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getMemberSkipStatus();
     }
 
-    public void removeSkipStatusWhoLeaved(Long roomId, Long memberId) {
+    public void removeSkipStatusWhoLeaved(String roomId, Long memberId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         inGameInfo.getMemberSkipStatus().remove(memberId);
     }
 
-    public void updateIsSongPlaying(Long roomId) {
+    public void updateIsSongPlaying(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
-        Map<Long, Boolean> isSongPlaying = inGameInfo.getIsSongPlaying();
+        Map<String, Boolean> isSongPlaying = inGameInfo.getIsSongPlaying();
         isSongPlaying.put(roomId, !isSongPlaying.getOrDefault(roomId, false));
     }
 
-    public boolean getIsSongPlaying(Long roomId) {
+    public boolean getIsSongPlaying(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getIsSongPlaying().get(roomId);
     }
 
-    public void clear(Long roomId) {
+    public void clear(String roomId) {
         inGameMap.remove(roomId);
     }
 
-    public Map<String, Integer> getScore(Long roomId) {
+    public Map<String, Integer> getScore(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getScore();
     }
 
-    public Map<Long, String> getRoundWinner(Long roomId) {
+    public Map<String, String> getRoundWinner(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getRoundWinner();
     }
 
-    public Map<String, Integer> getUserMovement(Long roomId) {
+    public Map<String, Integer> getUserMovement(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getUserMovement();
     }
 
-    public Map<Integer, Pair<GameMode, Song>> getRoundInfo(Long roomId) {
+    public Map<Integer, Pair<GameMode, Song>> getRoundInfo(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getRoundInfo();
     }
 
-    public Map<Long, Boolean> getMemberSkipStatus(Long roomId) {
+    public Map<Long, Boolean> getMemberSkipStatus(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getMemberSkipStatus();
     }
 
-    public boolean isAnswered(Long roomId) {
+    public boolean isAnswered(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.isAnswered();
     }

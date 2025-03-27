@@ -15,10 +15,10 @@ public class InGameInfo {
     private int skipCount;
     private boolean answered;
     private Map<String, Integer> score;
-    private Map<Long, String> roundWinner; // 각 방의 현재 정답자 확인용
+    private Map<String, String> roundWinner; // 각 방의 현재 정답자 확인용
     private Map<String, Integer> userMovement;
     private Map<Integer, Pair<GameMode, Song>> roundInfo;
-    private Map<Long, Boolean> isSongPlaying;
+    private Map<String, Boolean> isSongPlaying;
     private Map<Long, Boolean> memberSkipStatus;
 
     public InGameInfo() {
