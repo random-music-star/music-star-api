@@ -39,7 +39,7 @@ public class GameTimerManager {
             try {
                 for (int i = 3; i > 0; i--) {
                     gameMessageSender.sendCountdown(destination, i);
-                    Thread.sleep(1000);
+                    Thread.sleep(2500);
                 }
                 gameMessageSender.sendCountdown(destination, 0);
                 onCountdownComplete.run();
