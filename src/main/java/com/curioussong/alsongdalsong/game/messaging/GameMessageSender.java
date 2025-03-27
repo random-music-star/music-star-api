@@ -46,6 +46,11 @@ public class GameMessageSender {
     private final SimpMessagingTemplate messagingTemplate;
     private final RoomGameRepository roomGameRepository;
 
+    public void sendRoundInfoAndQuizInfo(String destination, int currentRound, GameMode gameMode, Song currentRoundSong) {
+        sendRoundInfo(destination, currentRound, gameMode);
+        sendQuizInfo(destination, currentRoundSong.getUrl());
+    }
+
     public void sendRoundInfo(String destination, int currentRound, GameMode gameMode) {
         log.debug("sendRoundInfo 호출됨 - destination: {}, round: {}", destination, currentRound);
 
