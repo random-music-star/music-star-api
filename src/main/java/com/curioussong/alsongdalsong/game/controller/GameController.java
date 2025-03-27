@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.game.controller;
 
+import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.start.StartRequest;
 import com.curioussong.alsongdalsong.game.dto.userinfo.ReadyRequest;
 import com.curioussong.alsongdalsong.game.service.GameService;
@@ -29,5 +30,15 @@ public class GameController {
     @SendTo("/topic/channel/{channelId}/room/{roomId}")
     public void toggleReady(ReadyRequest request, @DestinationVariable Long channelId, @DestinationVariable String roomId) {
         gameService.toggleReady(request.getUsername(), channelId, roomId);
+    }
+
+    @MessageMapping("/channel/{channelId}")
+    public void handleChannelChat(ChatRequestDTO chatRequestDTO, @DestinationVariable Long channelId) {
+        gameService.channelChatMessage(chatRequestDTO, channelId);
+    }
+
+    @MessageMapping("/channel/{channelId}/room/{roomId}")
+    public void handleRoomChat(ChatRequestDTO chatRequestDTO, @DestinationVariable Long channelId, @DestinationVariable String roomId) {
+        gameService.roomChatMessage(chatRequestDTO, channelId, roomId);
     }
 }

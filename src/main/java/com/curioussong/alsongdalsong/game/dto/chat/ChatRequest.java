@@ -1,9 +1,9 @@
-package com.curioussong.alsongdalsong.chat.dto;
+package com.curioussong.alsongdalsong.game.dto.chat;
 
 import lombok.Getter;
 
 @Getter
-public class Request {
+public class ChatRequest {
     private String sender;
     private String message;
 }

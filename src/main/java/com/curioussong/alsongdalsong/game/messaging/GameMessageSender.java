@@ -5,6 +5,9 @@ import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.board.EventEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.board.EventTriggerResponse;
 import com.curioussong.alsongdalsong.game.dto.board.EventTriggerResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
+import com.curioussong.alsongdalsong.game.dto.chat.ChatResponse;
+import com.curioussong.alsongdalsong.game.dto.chat.ChatResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
@@ -45,6 +48,21 @@ public class GameMessageSender {
 
     private final SimpMessagingTemplate messagingTemplate;
     private final RoomGameRepository roomGameRepository;
+
+    public void sendChat(ChatRequestDTO chatRequestDTO, String destination) {
+        ChatResponse chatResponse = ChatResponse.builder()
+                .sender(chatRequestDTO.getRequest().getSender())
+                .messageType("default")
+                .message(chatRequestDTO.getRequest().getMessage())
+                .build();
+
+        ChatResponseDTO chatResponseDTO = ChatResponseDTO.builder()
+                .type(chatRequestDTO.getType())
+                .response(chatResponse)
+                .build();
+
+        messagingTemplate.convertAndSend(destination, chatResponseDTO);
+    }
 
     public void sendRoundInfoAndQuizInfo(String destination, int currentRound, GameMode gameMode, Song currentRoundSong) {
         sendRoundInfo(destination, currentRound, gameMode);

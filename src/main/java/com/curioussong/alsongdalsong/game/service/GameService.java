@@ -1,11 +1,11 @@
 package com.curioussong.alsongdalsong.game.service;
 
-import com.curioussong.alsongdalsong.chat.dto.ChatRequest;
 import com.curioussong.alsongdalsong.game.board.BoardEventHandler;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
@@ -43,6 +43,29 @@ public class GameService {
     private final GameMessageSender gameMessageSender;
     private final GameTimerManager gameTimerManager;
     private final BoardEventHandler boardEventHandler;
+
+    public void channelChatMessage(ChatRequestDTO chatRequestDTO, Long channelId) {
+        String destination = String.format("/topic/channel/%d", channelId);
+
+        gameMessageSender.sendChat(chatRequestDTO, destination);
+    }
+
+    public void roomChatMessage(ChatRequestDTO chatRequestDTO, Long channelId, String roomId) {
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+        gameMessageSender.sendChat(chatRequestDTO, destination);
+
+        // Skip 요청 처리
+        if (".".equals(chatRequestDTO.getRequest().getMessage())) {
+            incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
+        }
+
+        if (checkAnswer(chatRequestDTO, roomId)) {
+            handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
+        }
+
+    }
+
+
 
     @Transactional
     public void startGame(Long channelId, String roomId) {
@@ -203,8 +226,8 @@ public class GameService {
         gameMessageSender.sendGameResult(destination, userName, song);
     }
 
-    public boolean checkAnswer(ChatRequest chatRequest, String roomId) {
-        String userAnswer = chatRequest.getRequest().getMessage();
+    public boolean checkAnswer(ChatRequestDTO chatRequestDTO, String roomId) {
+        String userAnswer = chatRequestDTO.getRequest().getMessage();
         Song song = inGameManager.getCurrentRoundSong(roomId);
         log.info("current song: {}", song.getKorTitle());
         return userAnswer.equals(song.getKorTitle()) || userAnswer.equals(song.getEngTitle());
