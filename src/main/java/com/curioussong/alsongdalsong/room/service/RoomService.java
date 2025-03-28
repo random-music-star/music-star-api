@@ -198,7 +198,7 @@ public class RoomService {
 
     @Transactional(readOnly=true)
     public LobbyResponse getRoomDataForLobby() {
-        Page<RoomDTO> roomPage = getRooms(0, 8);
+        Page<RoomDTO> roomPage = getRooms(0, 6);
 
         for (RoomDTO roomDTO : roomPage.getContent()) {
             String roomId = roomDTO.getId();

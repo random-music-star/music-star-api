@@ -37,7 +37,7 @@ public class RoomController {
     @GetMapping
     public ResponseEntity<Page<RoomDTO>> getRooms(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "8") int size) {
+            @RequestParam(defaultValue = "6") int size) {
         Page<RoomDTO> roomsPage = roomService.getRooms(page, size);
         return ResponseEntity.ok(roomsPage);
     }
