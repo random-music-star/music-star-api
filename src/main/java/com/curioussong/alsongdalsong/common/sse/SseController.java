@@ -40,7 +40,6 @@ public class SseController {
     }
 
 
-    @Async
     public void sendRoomData(SseEmitter emitter) {
         try {
             LobbyResponse roomData = roomService.getRoomDataForLobby();
