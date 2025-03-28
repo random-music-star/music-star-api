@@ -16,10 +16,7 @@ spring:
 
 logging:
   level:
-    root: INFO
-    com.zaxxer.hikari: INFO
-    org.hibernate.SQL: INFO
-    org.springframework.transaction: INFO
+    com.curioussong.alsongdalsong: ${LOG_LEVEL:INFO}
 
 ---
 spring:

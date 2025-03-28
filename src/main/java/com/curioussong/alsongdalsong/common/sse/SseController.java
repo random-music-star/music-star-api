@@ -4,6 +4,7 @@ import com.curioussong.alsongdalsong.room.dto.LobbyResponse;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +14,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 
+@Slf4j
 @RestController
 @RequestMapping("/sse")
 @RequiredArgsConstructor
@@ -47,7 +49,17 @@ public class SseController {
                     .name("ROOM_LIST")
                     .data(roomData));
         } catch (Exception e) {
-            emitter.completeWithError(e);
+            sendErrorEvent(emitter, "방 목록을 불러오는 중 오류 발생: "+e.getMessage());
+        }
+    }
+
+    private void sendErrorEvent(SseEmitter emitter, String errorMessage) {
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("ERROR")
+                    .data(errorMessage));
+        } catch (Exception e) {
+            log.warn("에러 메시지 전송 실패: {}", errorMessage, e);
         }
     }
 }
