@@ -114,7 +114,9 @@ public class RoomService {
         log.info("방 나가기 후 멤버 수: {}", room.getMembers().size());
         log.debug("방 멤버 목록 (나간 후): {}", room.getMembers().stream().map(Member::getUsername).toList());
         roomManager.getReadyStatus(roomId).remove(member.getId());
-        inGameManager.removeSkipStatusWhoLeaved(roomId, member.getId());
+        if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
+            inGameManager.removeSkipStatusWhoLeaved(roomId, member.getId());
+        }
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room, RoomUpdatedEvent.ActionType.DELETED));
         log.debug("이벤트 발행 완료");
