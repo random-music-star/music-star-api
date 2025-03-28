@@ -120,10 +120,12 @@ public class GameMessageSender {
         String koreanTitle = song.getKorTitle();
         String englishTitle = song.getEngTitle();
         StringBuilder title = new StringBuilder();
-        if (englishTitle != null) {
-            title.append(koreanTitle).append("(").append(englishTitle).append(")");
-        } else {
+        if (englishTitle.isBlank()) {
             title.append(koreanTitle);
+        } else {
+            if (englishTitle.matches(".*[a-zA-Z].*")) {
+                title.append(englishTitle);
+            }
         }
 
         messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()

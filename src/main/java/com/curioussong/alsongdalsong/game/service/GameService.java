@@ -10,6 +10,7 @@ import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
+import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -230,8 +231,7 @@ public class GameService {
         String userAnswer = chatRequestDTO.getRequest().getMessage();
         Song song = inGameManager.getCurrentRoundSong(roomId);
         log.info("current song: {}", song.getKorTitle());
-        return userAnswer.equals(song.getKorTitle()) || userAnswer.equals(song.getEngTitle());
-//        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
+        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
     }
 
     public void handleAnswer(String userName, Long channelId, String roomId) {
