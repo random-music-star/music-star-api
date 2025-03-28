@@ -15,11 +15,14 @@ public class SseEmitterManager {
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     public SseEmitter add(String sessionId, Long timeout) {
+        if (emitters.containsKey(sessionId)) {
+            log.info("기존 SSE 연결 제거: sessionId={}", sessionId);
+        }
         remove(sessionId);
 
         SseEmitter emitter = new SseEmitter(timeout);
         emitters.put(sessionId, emitter);
-        log.debug("SSE 연결 추가: {}, 총 연결 수: {}", sessionId, emitters.size());
+        log.debug("새 SSE 연결 추가: {}, 총 연결 수: {}", sessionId, emitters.size());
 
         emitter.onCompletion(() -> {
             log.debug("SSE 연결 종료: {}", sessionId);
