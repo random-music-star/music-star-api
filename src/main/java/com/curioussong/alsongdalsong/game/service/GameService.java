@@ -91,13 +91,14 @@ public class GameService {
 
     public void startRound(Long channelId, Room room, String destination) {
         int currentRound = inGameManager.getCurrentRound(room.getId());
-        Song currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
-        log.info("Round : {} 진행중입니다.", currentRound);
-
         // 사용자가 목표 지점에 도달 || 최대 라운드 도달 시 종료
         if (isGameEnd(room, currentRound)) {
             endGame(room, destination);
+            return;
         }
+        Song currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
+        log.info("Round : {} 진행중입니다.", currentRound);
+
 
         // 라운드 준비
         initializeRound(room);
@@ -337,21 +338,21 @@ public class GameService {
         log.info("Game ended. Final winner: {}", finalWinner);
         gameMessageSender.sendGameEndMessage(destination, finalWinner);
 
-        // 인게임 정보 삭제
-        inGameManager.clear(room.getId());
 
         // 멤버 상태 초기화
         roomManager.initializeMemberReadyStatus(room.getId());
 
-        eventPublisher.publishEvent(new GameStatusEvent(
-                roomRepository.findById(room.getId())
-                        .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다.")),
-                "WAITING"));
+        // 게임 종료 시 WAITING 상태로 변경
+        room.updateStatus(Room.RoomStatus.WAITING);
+
         ScheduledExecutorService tempScheduler = Executors.newSingleThreadScheduledExecutor();
         tempScheduler.schedule(() -> {
             gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(room.getId()));
             sendUserInfoToSubscriber(destination, room);
             tempScheduler.shutdown();
+
+            // 인게임 정보 삭제
+            inGameManager.clear(room.getId());
         }, 3, TimeUnit.SECONDS);
     }
 }
