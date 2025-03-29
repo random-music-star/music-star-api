@@ -1,8 +1,11 @@
 package com.curioussong.alsongdalsong.game.util;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 public class SongAnswerValidator {
 
     // 채팅의 모든 공백 제거 및 대문자 치환
@@ -35,7 +38,10 @@ public class SongAnswerValidator {
         String processedUserAnswer = extractAnswer(userAnswer);
 
         String processedKoreanAnswer = extractAnswer(koreanTitle);
-        String processedEnglishAnswer = englishTitle.isBlank() ? null : extractAnswer(englishTitle);
+        String processedEnglishAnswer = null;
+        if (!englishTitle.isBlank()) {
+            processedEnglishAnswer = extractAnswer(englishTitle);
+        }
         String koreanAnswerWithNumber = convertNumbersToKorean(processedKoreanAnswer);
         String koreanAnswerWithSpecialCharacters = convertSpecialCharactersToKorean(processedKoreanAnswer);
         String koreanAnswerWithNumberAndSpecialCharacters = convertSpecialCharactersToKorean(koreanAnswerWithNumber);
@@ -43,12 +49,16 @@ public class SongAnswerValidator {
 
         List<String> correctAnswers = new ArrayList<>();
         correctAnswers.add(processedKoreanAnswer);
-        correctAnswers.add(processedEnglishAnswer);
+        if (processedEnglishAnswer != null) {
+            correctAnswers.add(processedEnglishAnswer);
+        }
         correctAnswers.add(koreanAnswerWithNumber);
         correctAnswers.add(koreanAnswerWithSpecialCharacters);
         correctAnswers.add(koreanAnswerWithNumberAndSpecialCharacters);
         correctAnswers.add(koreanAnswerWithSpecialCharactersAndNumber);
 
+        log.info("user's Answer: " + processedUserAnswer);
+        log.info("correct answers: " + correctAnswers);
         return correctAnswers.contains(processedUserAnswer);
     }
 
