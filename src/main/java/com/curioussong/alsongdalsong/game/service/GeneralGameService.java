@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -112,7 +113,7 @@ public class GeneralGameService {
         gameTimerManager.shutdownAllTimers(room.getId());
 
         // 최고 점수 가진 플레이어 찾기
-        String finalWinner = findWinnerByScore(room.getId());
+        List<String> finalWinner = findWinnerByScore(room.getId());
         log.info("Game ended. Final winner: {}", finalWinner);
         gameMessageSender.sendGameEndMessage(destination, finalWinner);
 
@@ -138,12 +139,24 @@ public class GeneralGameService {
     }
 
     // 최고 점수를 가진 플레이어 찾기
-    private String findWinnerByScore(String roomId) {
-        return inGameManager.getScore(roomId).entrySet()
-                .stream()
-                .max(Map.Entry.comparingByValue())
-                .map(Map.Entry::getKey)
-                .orElse(null);
+    private List<String> findWinnerByScore(String roomId) {
+        Map<String, Integer> scores = inGameManager.getScore(roomId);
+        List<String> winners = new ArrayList<>();
+
+        int maxScore = Integer.MIN_VALUE;
+        for (Integer score : scores.values()) {
+            if (score > maxScore) {
+                maxScore = score;
+            }
+        }
+
+        for (Map.Entry<String, Integer> entry : scores.entrySet()) {
+            if (entry.getValue() == maxScore) {
+                winners.add(entry.getKey());
+            }
+        }
+
+        return winners;
     }
 
     @Transactional

@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -60,7 +61,7 @@ public class BoardGameService {
     }
 
     private boolean isGameEnd(Room room, int currentRound) {
-        return findWinnerByScore(room.getId(), 19) != null || currentRound == roomManager.getMaxGameRound(room.getId()) + 1;
+        return findWinnerByScore(room.getId()) != null || currentRound == roomManager.getMaxGameRound(room.getId()) + 1;
     }
 
     private void initializeRound(Room room) {
@@ -212,13 +213,19 @@ public class BoardGameService {
     }
 
     // 최고 점수를 가진 플레이어 찾기
-    private String findWinnerByScore(String roomId, int minScore) {
-        return inGameManager.getScore(roomId).entrySet()
-                .stream()
-                .filter(entry -> entry.getValue() >= minScore)
-                .max(Map.Entry.comparingByValue())
+    private List<String> findWinnerByScore(String roomId) {
+        Map<String, Integer> scores = inGameManager.getScore(roomId);
+
+        // 최고 점수 찾기
+        int maxScore = scores.values().stream()
+                .max(Integer::compareTo)
+                .orElse(Integer.MIN_VALUE);
+
+        // 최고 점수를 가진 모든 플레이어 찾기
+        return scores.entrySet().stream()
+                .filter(entry -> entry.getValue() == maxScore)
                 .map(Map.Entry::getKey)
-                .orElse(null);
+                .collect(Collectors.toList());
     }
 
     private void endGame(Room room, String destination) {
@@ -226,7 +233,7 @@ public class BoardGameService {
         gameTimerManager.shutdownAllTimers(room.getId());
 
         // 최고 점수 가진 플레이어 찾기
-        String finalWinner = findWinnerByScore(room.getId(), 0);
+        List<String> finalWinner = findWinnerByScore(room.getId());
         log.info("Game ended. Final winner: {}", finalWinner);
         gameMessageSender.sendGameEndMessage(destination, finalWinner);
 

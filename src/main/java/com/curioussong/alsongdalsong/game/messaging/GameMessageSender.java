@@ -168,7 +168,7 @@ public class GameMessageSender {
                 .build());
     }
 
-    public void sendGameEndMessage(String destination, String finalWinner) {
+    public void sendGameEndMessage(String destination, List<String> finalWinner) {
         messagingTemplate.convertAndSend(destination, GameEndResponseDTO.builder()
                 .type("gameEnd")
                 .response(GameEndResponse.builder()
