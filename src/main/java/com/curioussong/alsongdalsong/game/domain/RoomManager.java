@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.game.domain;
 
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -47,8 +49,8 @@ public class RoomManager {
             roomInfo.getMemberReadyStatus().put(member.getId(), false);
         }
 
-        // 노래 년도 가져오기
         roomInfo.setSelectedYears(getSelectedYearsFromRoomYear(room));
+        roomInfo.setGameModes(findGameModesByRoom(room));
 
         roomMap.put(room.getId(), roomInfo);
     }
@@ -60,9 +62,17 @@ public class RoomManager {
                 .collect(Collectors.toList());
     }
 
+    private List<GameMode> findGameModesByRoom(Room room) {
+        return roomGameRepository.findGameModesByRoomId(room.getId());
+    }
+
     // 방의 노래년도 리스트 반환
     public List<Integer> getSelectedYears(String roomId) {
         return getRoomInfo(roomId).getSelectedYears();
+    }
+
+    public List<GameMode> getGameModes(String roomId) {
+        return getRoomInfo(roomId).getGameModes();
     }
 
     // 방의 멤버 레디 상태 초기화 (ready → false)
@@ -134,5 +144,29 @@ public class RoomManager {
     public int getMaxGameRound(String roomId) {
         RoomInfo roomInfo = roomMap.get(roomId);
         return roomInfo.getMaxGameRound();
+    }
+
+    public List<UserInfo> getUserInfos(Room room) {
+        List<UserInfo> userInfoList = new ArrayList<>();
+
+        for (Member member : room.getMembers()) {
+            boolean isHost = member.getId().equals(room.getHost().getId());
+            boolean isReady = Boolean.TRUE.equals(getReady(room.getId(), member.getId()));
+
+            userInfoList.add(new UserInfo(member.getUsername(), isReady, isHost));
+        }
+
+        return userInfoList;
+    }
+
+    public boolean isAllReady(Room room) {
+        List<UserInfo> userInfos = getUserInfos(room);
+        for (UserInfo userInfo : userInfos) {
+            if (userInfo.getIsReady() == Boolean.FALSE) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

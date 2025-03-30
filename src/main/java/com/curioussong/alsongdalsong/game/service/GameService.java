@@ -23,7 +23,6 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -91,7 +90,7 @@ public class GameService {
         eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
 
         String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
-        gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
+        gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(roomId), roomManager.getGameModes(roomId));
 
         inGameManager.initializeGameSettings(room);
 
@@ -204,40 +203,6 @@ public class GameService {
         boardEventHandler.handleEvent(destination, roomId, eventResponse);
     }
 
-    @Transactional
-    public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, String roomId) {
-        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
-        sendUserInfoToSubscriber(destination, room);
-    }
-
-    private void sendUserInfoToSubscriber(String destination, Room room) {
-        List<Long> memberIds = room.getMembers().stream()
-                .map(Member::getId).toList();
-        List<UserInfo> userInfoList = new ArrayList<>();
-
-        boolean allReady = true;
-
-        for (Long memberId : memberIds) {
-            Member member = memberService.getMemberById(memberId);
-            boolean isHost = memberId.equals(room.getHost().getId());
-            boolean isReady = Boolean.TRUE.equals(roomManager.getReady(room.getId(), memberId));
-
-            log.debug("User {} ready status in response: {}", member.getUsername(), isReady);
-
-            if (!isReady) {
-                allReady = false;
-            }
-
-            UserInfo userInfo = new UserInfo(member.getUsername(), isReady, isHost);
-            userInfoList.add(userInfo);
-        }
-
-        gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
-    }
-
     private void sendGameResult(String destination, String roomId, String userName) {
         Song song = inGameManager.getCurrentRoundSong(roomId);
         gameMessageSender.sendGameResult(destination, userName, song);
@@ -327,7 +292,11 @@ public class GameService {
         String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
-        sendUserInfoToSubscriber(destination, room);
+
+
+        List<UserInfo> userInfoList = roomManager.getUserInfos(room);
+        boolean allReady = roomManager.isAllReady(room);
+        gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
     }
 
     public void updateSongYears(String roomId, List<Integer> selectedYears) {
@@ -362,8 +331,12 @@ public class GameService {
 
         ScheduledExecutorService tempScheduler = Executors.newSingleThreadScheduledExecutor();
         tempScheduler.schedule(() -> {
-            gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(room.getId()));
-            sendUserInfoToSubscriber(destination, room);
+            gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(room.getId()), roomManager.getGameModes(room.getId()));
+
+            List<UserInfo> userInfoList = roomManager.getUserInfos(room);
+            boolean allReady = roomManager.isAllReady(room);
+            gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
+
             tempScheduler.shutdown();
 
             // 인게임 정보 삭제

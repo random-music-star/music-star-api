@@ -14,8 +14,6 @@ import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 import org.springframework.web.socket.messaging.SessionUnsubscribeEvent;
 
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Component
 @Slf4j
@@ -55,9 +53,9 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
             if (!("-1").equals(roomId)) {
                 log.info("방 토픽 구독 해제 감지: 방ID={}, 사용자={}", roomId, userName);
                 // 방 나가기 처리
-                roomService.leaveRoom(roomId, userName);
+                roomService.leaveRoom(channelId, roomId, userName);
                 sessionManager.removeSessionId(sessionId);
-                sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
+//                sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
             }
         }
     }
@@ -71,15 +69,15 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
 
             // roomId가 -1L이 아닌 경우에만 방 나가기 처리
             if (!("-1").equals(roomId)) {
-                roomService.leaveRoom(roomId, userName);
+                roomService.leaveRoom(channelId, roomId, userName);
                 // 채널은 유지하고 방만 나가는 경우 처리 (sessionManager 업데이트)
                 sessionManager.removeSessionId(sessionId);
-                sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
+//                sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
             }
         }
     }
 
-    public void sendRoomInfoAndUserInfoToSubscribers(Long channelId, String roomId) {
-        gameService.sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
-    }
+//    public void sendRoomInfoAndUserInfoToSubscribers(Long channelId, String roomId) {
+//        gameService.sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
+//    }
 }

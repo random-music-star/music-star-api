@@ -32,7 +32,8 @@ import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponse;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
 import com.curioussong.alsongdalsong.room.domain.Room;
-import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
+import com.curioussong.alsongdalsong.room.dto.RefuseEnterResponse;
+import com.curioussong.alsongdalsong.room.dto.RefuseEnterResponseDTO;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,7 +48,6 @@ import java.util.List;
 public class GameMessageSender {
 
     private final SimpMessagingTemplate messagingTemplate;
-    private final RoomGameRepository roomGameRepository;
 
     public void sendChat(ChatRequestDTO chatRequestDTO, String destination) {
         ChatResponse chatResponse = ChatResponse.builder()
@@ -177,10 +177,7 @@ public class GameMessageSender {
                 .build());
     }
 
-    public void sendRoomInfoToSubscriber(String destination, Room room, List<Integer> selectedYears) {
-        // 방 정보 전송
-        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(room.getId());
-
+    public void sendRoomInfo(String destination, Room room, List<Integer> selectedYears, List<GameMode> gameModes) {
         messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
                 .type("roomInfo")
                 .response(RoomInfoResponse.builder()
@@ -228,5 +225,14 @@ public class GameMessageSender {
         EventEndResponseDTO responseDTO = EventEndResponseDTO.builder().build();
         messagingTemplate.convertAndSend(destination, responseDTO);
         log.debug("Event end message sent");
+    }
+
+    public void sendRefuseMessage(String destination, String userName) {
+        messagingTemplate.convertAndSend(destination, RefuseEnterResponseDTO.builder()
+                .type("refuseEnter")
+                .response(RefuseEnterResponse.builder()
+                        .refusedUser(userName)
+                        .build())
+                .build());
     }
 }

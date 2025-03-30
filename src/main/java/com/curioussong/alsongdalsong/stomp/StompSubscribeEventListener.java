@@ -1,26 +1,16 @@
 package com.curioussong.alsongdalsong.stomp;
 
-import com.curioussong.alsongdalsong.game.dto.test.TestResponse;
-import com.curioussong.alsongdalsong.game.dto.test.TestResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
+import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.service.GameService;
-import com.curioussong.alsongdalsong.room.dto.RefuseEnterResponse;
-import com.curioussong.alsongdalsong.room.dto.RefuseEnterResponseDTO;
-import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,6 +23,7 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
     private final GameService gameService;
     private final RoomService roomService;
     private final SessionManager sessionManager;
+    private final GameMessageSender gameMessageSender;
 
     // 토픽 구독을 감지하는 메서드
     @Override
@@ -78,17 +69,12 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
             // 방이 가득 찼거나, 게임 진행 중이면 참가 불가
             if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId) || roomService.isRoomFinished(roomId)) {
-                sendRefuseMessage(destination, userName);
+                gameMessageSender.sendRefuseMessage(destination, userName);
                 return;
             }
-            roomService.joinRoom(roomId, sessionId, userName);
+            roomService.joinRoom(channelId, roomId, sessionId, userName);
             sessionManager.addSessionId(sessionId, channelId, roomId, userName);
-            sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
         }
-    }
-
-    public void sendRoomInfoAndUserInfoToSubscriber(Long channelId, String roomId) {
-        gameService.sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
     }
 
     private String getUsernameFromHeader(StompHeaderAccessor accessor) {
@@ -98,12 +84,4 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         return null;
     }
 
-    private void sendRefuseMessage(String destination, String userName) {
-        messagingTemplate.convertAndSend(destination, RefuseEnterResponseDTO.builder()
-                .type("refuseEnter")
-                .response(RefuseEnterResponse.builder()
-                        .refusedUser(userName)
-                        .build())
-                .build());
-    }
 }

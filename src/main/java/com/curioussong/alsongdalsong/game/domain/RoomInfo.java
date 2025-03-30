@@ -18,6 +18,7 @@ public class RoomInfo {
     private int maxGameRound;
     private List<Integer> selectedYears;
     private final Map<BoardEventType, Pair<String, Integer>> interactionEventTarget;
+    private List<GameMode> gameModes;
 
     // memberId에 따른 ready상태
     private Map<Long, Boolean> memberReadyStatus;
@@ -29,6 +30,7 @@ public class RoomInfo {
         this.selectedYears = new ArrayList<>();
         this.memberReadyStatus = new ConcurrentHashMap<>();
         this.interactionEventTarget = new ConcurrentHashMap<>();
+        this.gameModes = new ArrayList<>();
     }
 
 }

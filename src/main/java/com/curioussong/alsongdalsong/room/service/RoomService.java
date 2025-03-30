@@ -4,6 +4,8 @@ import com.curioussong.alsongdalsong.game.domain.Game;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
+import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
+import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
@@ -44,6 +46,7 @@ public class RoomService {
     private final RoomGameRepository roomGameRepository;
     private final RoomManager roomManager;
     private final InGameManager inGameManager;
+    private final GameMessageSender gameMessageSender;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -79,7 +82,9 @@ public class RoomService {
     }
 
     @Transactional
-    public void joinRoom(String roomId, String sessionId, String userName) {
+    public void joinRoom(Long channelId, String roomId, String sessionId, String userName) {
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
 
@@ -88,12 +93,20 @@ public class RoomService {
 
         room.addMember(member);
 
+        gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(roomId), roomManager.getGameModes(roomId));
+
+        List<UserInfo> userInfoList = roomManager.getUserInfos(room);
+        boolean allReady = roomManager.isAllReady(room);
+        gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
+
         eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), sessionId, userName));
         eventPublisher.publishEvent(new RoomUpdatedEvent(room));
     }
 
     @Transactional
-    public void leaveRoom(String roomId, String userName) {
+    public void leaveRoom(Long channelId, String roomId, String userName) {
+        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+
         log.debug("방 나가기 시작 - roomId: {}, userName: {}", roomId, userName);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("해당하는 방이 없습니다."));
@@ -117,6 +130,13 @@ public class RoomService {
         if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
             inGameManager.removeSkipStatusWhoLeaved(roomId, member.getId());
         }
+
+        gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(roomId), roomManager.getGameModes(roomId));
+
+        List<UserInfo> userInfoList = roomManager.getUserInfos(room);
+        boolean allReady = roomManager.isAllReady(room);
+        gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
+
 
         eventPublisher.publishEvent(new RoomUpdatedEvent(room, RoomUpdatedEvent.ActionType.DELETED));
         log.debug("이벤트 발행 완료");
