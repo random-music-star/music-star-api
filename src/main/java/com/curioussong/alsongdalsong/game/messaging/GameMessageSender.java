@@ -158,7 +158,7 @@ public class GameMessageSender {
                 .build());
     }
 
-    public void sendNextMessage(String destination, String username, int totalMovement) {
+    public void sendNextMessage(String destination, String username, Integer totalMovement) {
         messagingTemplate.convertAndSend(destination, NextResponseDTO.builder()
                 .type("next")
                 .response(NextResponse.builder()

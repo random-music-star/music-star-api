@@ -44,6 +44,7 @@ public class GameService {
     private final GameMessageSender gameMessageSender;
     private final GameTimerManager gameTimerManager;
     private final BoardEventHandler boardEventHandler;
+    private final GeneralGameService generalGameService;
 
     public void channelChatMessage(ChatRequestDTO chatRequestDTO, Long channelId) {
         String destination = String.format("/topic/channel/%d", channelId);
@@ -55,15 +56,24 @@ public class GameService {
         String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         gameMessageSender.sendChat(chatRequestDTO, destination);
 
-        // Skip 요청 처리
-        if (".".equals(chatRequestDTO.getRequest().getMessage())) {
-            incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+        if (room.getFormat()== Room.RoomFormat.GENERAL) {
+            // Skip 요청 처리
+            if (".".equals(chatRequestDTO.getRequest().getMessage())) {
+                generalGameService.incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
+            }
+            if (generalGameService.checkAnswer(chatRequestDTO, roomId)) {
+                generalGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
+            }
+        } else if (room.getFormat()== Room.RoomFormat.BOARD) {
+            if (".".equals(chatRequestDTO.getRequest().getMessage())) {
+                incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
+            }
+            if (checkAnswer(chatRequestDTO, roomId)) {
+                handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
+            }
         }
-
-        if (checkAnswer(chatRequestDTO, roomId)) {
-            handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
-        }
-
     }
 
 
@@ -84,7 +94,12 @@ public class GameService {
         gameMessageSender.sendRoomInfoToSubscriber(destination, room, roomManager.getSelectedYears(roomId));
 
         inGameManager.initializeGameSettings(room);
-        startRound(channelId, room, destination);
+
+        if (room.getFormat() == Room.RoomFormat.GENERAL) {
+            generalGameService.startRound(channelId, room, destination);
+        } else {
+            startRound(channelId, room, destination);
+        }
 
         // TODO : readyStatusMap.remove(roomId);
     }
