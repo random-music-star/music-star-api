@@ -50,12 +50,7 @@ public class GeneralGameService {
 
         // 라운드 준비
         initializeRound(room);
-
-        Song currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
-        GameMode currentGameMode = inGameManager.getRoundInfo(room.getId()).get(currentRound).getFirst();
-        gameMessageSender.sendRoundInfoAndQuizInfo(destination, currentRound, currentGameMode, currentRoundSong);
-
-        startCountdown(destination, channelId, room);
+        handleRoundStart(destination, channelId, room);
     }
 
     private void initializeRound(Room room) {
@@ -64,8 +59,11 @@ public class GeneralGameService {
         inGameManager.initializeSkipStatus(room); // 스킵 초기화
     }
 
-    public void startCountdown(String destination, Long channelId, Room room) {
-        gameTimerManager.startCountdown(destination, room.getId(), () -> {
+    public void handleRoundStart(String destination, Long channelId, Room room) {
+        int currentRound = inGameManager.getCurrentRound(room.getId());
+        GameMode gameMode = inGameManager.getRoundInfo(room.getId()).get(currentRound).getFirst();
+        Song currentRoundSong = inGameManager.getRoundInfo(room.getId()).get(currentRound).getSecond();
+        gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, room.getId(), () -> {
             // 카운트다운 완료 후 실행될 코드
             gameTimerManager.scheduleSongPlayTime(
                     destination,

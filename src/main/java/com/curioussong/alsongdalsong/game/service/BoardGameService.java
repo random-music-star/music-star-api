@@ -48,20 +48,16 @@ public class BoardGameService {
             endGame(room, destination);
             return;
         }
-        Song currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
         log.info("Round : {} 진행중입니다.", currentRound);
 
 
         // 라운드 준비
         initializeRound(room);
-
-        gameMessageSender.sendRoundInfoAndQuizInfo(destination, currentRound, GameMode.FULL, currentRoundSong);
-
-        startCountdown(destination, channelId, room);
+        handleRoundStart(destination, channelId, room);
     }
 
     private boolean isGameEnd(Room room, int currentRound) {
-        return findWinnerByScore(room.getId()) != null || currentRound == roomManager.getMaxGameRound(room.getId()) + 1;
+        return currentRound == roomManager.getMaxGameRound(room.getId()) + 1;
     }
 
     private void initializeRound(Room room) {
@@ -70,8 +66,11 @@ public class BoardGameService {
         inGameManager.initializeSkipStatus(room); // 스킵 초기화
     }
 
-    public void startCountdown(String destination, Long channelId, Room room) {
-        gameTimerManager.startCountdown(destination, room.getId(), () -> {
+    public void handleRoundStart(String destination, Long channelId, Room room) {
+        int currentRound = inGameManager.getCurrentRound(room.getId());
+        GameMode gameMode = inGameManager.getRoundInfo(room.getId()).get(currentRound).getFirst();
+        Song currentRoundSong = inGameManager.getRoundInfo(room.getId()).get(currentRound).getSecond();
+        gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, room.getId(), () -> {
             // 카운트다운 완료 후 실행될 코드
             gameTimerManager.scheduleSongPlayTime(
                     destination,

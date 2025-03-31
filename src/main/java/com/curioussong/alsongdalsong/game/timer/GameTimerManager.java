@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.game.timer;
 
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
@@ -48,6 +49,25 @@ public class GameTimerManager {
                 log.error("Countdown interrupted: {}", e.getMessage());
             }
         }).start();
+    }
+
+    public void handleRoundStart(String destination, int currentRound, GameMode gameMode,Song currentRoundSong, String roomId, Runnable roundStartComplete) {
+        gameMessageSender.sendRoundInfo(destination, currentRound, gameMode, currentRoundSong);
+        // 2.5초 후 roundInfo 전달
+        roomRoundTimerSchedulers.get(roomId).schedule(
+                () -> gameMessageSender.sendRoundOpen(destination),
+                2500,
+                TimeUnit.MILLISECONDS
+        );
+        // roundOpen 전달 1.5초 후 roundStart 전달
+        roomRoundTimerSchedulers.get(roomId).schedule(
+                () -> {
+                    gameMessageSender.sendRoundStart(destination);
+                    roundStartComplete.run();
+                },
+                4000,
+                TimeUnit.MILLISECONDS
+        );
     }
 
     public void scheduleSongPlayTime(String destination, int waitTimeInSeconds, String roomId, Runnable endRoundAction) {

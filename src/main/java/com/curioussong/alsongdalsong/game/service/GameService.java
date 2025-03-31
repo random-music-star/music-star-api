@@ -113,10 +113,9 @@ public class GameService {
         eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
 
         String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
-        gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(roomId), roomManager.getGameModes(roomId));
+//        gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(roomId), roomManager.getGameModes(roomId));
 
         inGameManager.initializeGameSettings(room);
-
         if (room.getFormat() == Room.RoomFormat.GENERAL) {
             generalGameService.startRound(channelId, room, destination);
         } else {

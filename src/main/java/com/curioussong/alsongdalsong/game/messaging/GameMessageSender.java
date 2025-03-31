@@ -16,14 +16,14 @@ import com.curioussong.alsongdalsong.game.dto.move.MoveResponse;
 import com.curioussong.alsongdalsong.game.dto.move.MoveResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.next.NextResponse;
 import com.curioussong.alsongdalsong.game.dto.next.NextResponseDTO;
-import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponse;
-import com.curioussong.alsongdalsong.game.dto.quiz.QuizResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.result.ResultResponse;
 import com.curioussong.alsongdalsong.game.dto.result.ResultResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
 import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.round.RoundResponse;
 import com.curioussong.alsongdalsong.game.dto.round.RoundResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.roundopen.RoundOpenResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.roundstart.RoundStartResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.skip.SkipResponse;
 import com.curioussong.alsongdalsong.game.dto.skip.SkipResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.timer.Response;
@@ -64,12 +64,7 @@ public class GameMessageSender {
         messagingTemplate.convertAndSend(destination, chatResponseDTO);
     }
 
-    public void sendRoundInfoAndQuizInfo(String destination, int currentRound, GameMode gameMode, Song currentRoundSong) {
-        sendRoundInfo(destination, currentRound, gameMode);
-        sendQuizInfo(destination, currentRoundSong.getUrl());
-    }
-
-    public void sendRoundInfo(String destination, int currentRound, GameMode gameMode) {
+    public void sendRoundInfo(String destination, int currentRound, GameMode gameMode, Song currentRoundSong) {
         log.debug("sendRoundInfo 호출됨 - destination: {}, round: {}", destination, currentRound);
 
         messagingTemplate.convertAndSend(destination, RoundResponseDTO.builder()
@@ -77,6 +72,7 @@ public class GameMessageSender {
                 .response(RoundResponse.builder()
                         .mode(gameMode)
                         .round(currentRound)
+                        .songUrl(currentRoundSong.getUrl())
                         .build())
                 .build());
 
@@ -94,14 +90,20 @@ public class GameMessageSender {
         messagingTemplate.convertAndSend(destination, timerResponse);
     }
 
-    public void sendQuizInfo(String destination, String songUrl) {
-        log.info("퀴즈 정보 전송");
-        messagingTemplate.convertAndSend(destination, QuizResponseDTO.builder()
-                .type("quizInfo")
-                .response(QuizResponse.builder()
-                        .songUrl(songUrl)
-                        .build())
-                .build());
+    public void sendRoundOpen(String destination) {
+        RoundOpenResponseDTO roundOpenResponseDTO = RoundOpenResponseDTO.builder()
+                .type("roundOpen")
+                .build();
+
+        messagingTemplate.convertAndSend(destination, roundOpenResponseDTO);
+    }
+
+    public void sendRoundStart(String destination) {
+        RoundStartResponseDTO roundStartResponseDTO = RoundStartResponseDTO.builder()
+                .type("roundStart")
+                .build();
+
+        messagingTemplate.convertAndSend(destination, roundStartResponseDTO);
     }
 
     public void sendHint(String destination, String title, String singer) {

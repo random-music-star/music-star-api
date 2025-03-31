@@ -11,4 +11,5 @@ import lombok.Setter;
 public class RoundResponse {
     private GameMode mode;
     private Integer round;
+    private String songUrl;
 }
