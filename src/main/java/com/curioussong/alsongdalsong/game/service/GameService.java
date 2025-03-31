@@ -56,22 +56,18 @@ public class GameService {
             return;
         }
 
-        if (room.getFormat()== Room.RoomFormat.GENERAL) {
+        if (room.getFormat() == Room.RoomFormat.GENERAL) {
             // Skip 요청 처리
             if (".".equals(chatRequestDTO.getRequest().getMessage())) {
                 generalGameService.incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
-            } else {
-                if (generalGameService.checkAnswer(chatRequestDTO, roomId)) {
-                    generalGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
-                }
+            } else if (generalGameService.checkAnswer(chatRequestDTO, roomId)) {
+                generalGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
             }
-        } else if (room.getFormat()== Room.RoomFormat.BOARD) {
+        } else if (room.getFormat() == Room.RoomFormat.BOARD) {
             if (".".equals(chatRequestDTO.getRequest().getMessage())) {
                 boardGameService.incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
-            } else {
-                if (boardGameService.checkAnswer(chatRequestDTO, roomId)) {
-                    boardGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
-                }
+            } else if (boardGameService.checkAnswer(chatRequestDTO, roomId)) {
+                boardGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
             }
         }
     }
@@ -104,7 +100,6 @@ public class GameService {
     public void updateSongYears(String roomId, List<Integer> selectedYears) {
         roomManager.setSelectedYears(roomId, selectedYears);
     }
-
 
 
     @Transactional

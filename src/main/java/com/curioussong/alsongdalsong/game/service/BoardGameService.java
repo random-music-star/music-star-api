@@ -146,6 +146,9 @@ public class BoardGameService {
     }
 
     public boolean checkAnswer(ChatRequestDTO chatRequestDTO, String roomId) {
+        if (!inGameManager.getIsSongPlaying(roomId)) {
+            return false;
+        }
         String userAnswer = chatRequestDTO.getRequest().getMessage();
         Song song = inGameManager.getCurrentRoundSong(roomId);
         log.info("current song: {}", song.getKorTitle());
