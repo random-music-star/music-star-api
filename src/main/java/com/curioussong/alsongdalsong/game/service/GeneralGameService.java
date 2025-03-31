@@ -85,13 +85,8 @@ public class GeneralGameService {
 
         if (isWinnerExist) {
             int winnerScore = inGameManager.getScore(room.getId()).get(winner);
-            gameMessageSender.sendNextMessage(destination,
-                    winner,
-                    winnerScore);
+            gameMessageSender.sendUserPosition(destination, room.getId(), winnerScore);
         } else {
-            gameMessageSender.sendNextMessage(destination,
-                    winner,
-                    null);
             sendGameResult(destination, room.getId(), null);
         }
 
