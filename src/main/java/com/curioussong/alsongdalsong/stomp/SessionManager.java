@@ -34,14 +34,11 @@ public class SessionManager {
         Set<String> users = channelUserMap.get(channelId);
         if (users != null) {
             users.remove(username);
-            if (users.isEmpty()) {
-                channelUserMap.remove(channelId);
-            }
         }
     }
 
     public int getChannelUserCount(Long channelId) {
         Set<String> users = channelUserMap.get(channelId);
-        return users != null ? users.size() : 0;
+        return users.size();
     }
 }
