@@ -1,6 +1,7 @@
 package com.curioussong.alsongdalsong.common.sse;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -18,7 +19,11 @@ public class SseController {
     private final SseEmitterManager emitterManager;
 
     @GetMapping(value = "/{channelId}", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter connectToLobby(@PathVariable Long channelId, HttpServletRequest request) {
+    public SseEmitter connectToLobby(@PathVariable Long channelId, HttpServletRequest request, HttpServletResponse response) {
+
+        response.setCharacterEncoding("UTF-8");
+        response.setContentType(MediaType.TEXT_EVENT_STREAM_VALUE + ";charset=UTF-8");
+
         String sessionId = request.getSession().getId();
         String clientIP = request.getRemoteAddr();
         String userAgent = request.getHeader("User-Agent");
