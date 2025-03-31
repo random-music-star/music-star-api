@@ -85,7 +85,7 @@ public class GeneralGameService {
 
         if (isWinnerExist) {
             int winnerScore = inGameManager.getScore(room.getId()).get(winner);
-            gameMessageSender.sendUserPosition(destination, room.getId(), winnerScore);
+            gameMessageSender.sendUserPosition(destination, winner, winnerScore);
         } else {
             sendGameResult(destination, room.getId(), null);
         }
@@ -202,12 +202,12 @@ public class GeneralGameService {
             return;
         }
 
-//      int scoreToAdd = calculateScore(); // 추후 구현
-        int scoreToAdd = 4;
-        inGameManager.getUserMovement(roomId).put(userName, scoreToAdd); // 정답자 이동 예정 횟수 갱신
+//        inGameManager.getUserMovement(roomId).put(userName, scoreToAdd);
 
         // 방의 현재 라운드 정답자 저장
         inGameManager.getRoundWinner(roomId).put(roomId, userName);
+        int scoreToAdd = 1;
+        inGameManager.getScore(roomId).put(userName, inGameManager.getScore(roomId).get(userName) + scoreToAdd);
 
         // 정답 맞춘 상태 처리
         inGameManager.updateIsAnswered(roomId);
