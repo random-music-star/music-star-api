@@ -69,7 +69,7 @@ public class SseController {
         return emitter;
     }
 
-    @PostMapping("/sse/disconnect")
+    @PostMapping("/disconnect")
     public void disconnect(HttpServletRequest request) {
         String sessionId = request.getSession().getId();
         emitterManager.cleanupChannelSession(sessionId);
