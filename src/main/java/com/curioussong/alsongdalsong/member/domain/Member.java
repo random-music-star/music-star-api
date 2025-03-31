@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.member.domain;
 
+import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -34,6 +35,10 @@ public class Member {
     @ManyToOne
     private Room room;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_channel_id")
+    private Channel currentChannel;
+
     public void setRoom(Room room) {
         this.room = room;
     }
@@ -43,5 +48,13 @@ public class Member {
         this.username = username;
         this.password = password;
         this.type = type;
+    }
+
+    public void enterChannel(Channel channel) {
+        this.currentChannel = channel;
+    }
+
+    public void leaveChannel() {
+        this.currentChannel = null;
     }
 }

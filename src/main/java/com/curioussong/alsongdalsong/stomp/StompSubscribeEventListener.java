@@ -1,10 +1,18 @@
 package com.curioussong.alsongdalsong.stomp;
 
+import com.curioussong.alsongdalsong.channel.enums.ChannelEventType;
+import com.curioussong.alsongdalsong.channel.event.ChannelStatusChangedEvent;
+import com.curioussong.alsongdalsong.game.dto.test.TestResponse;
+import com.curioussong.alsongdalsong.game.dto.test.TestResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.service.GameService;
+import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
@@ -19,11 +27,11 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class StompSubscribeEventListener implements ApplicationListener<SessionSubscribeEvent> {
 
-    private final SimpMessagingTemplate messagingTemplate;
-    private final GameService gameService;
+    private final MemberService memberService;
     private final RoomService roomService;
     private final SessionManager sessionManager;
     private final GameMessageSender gameMessageSender;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // 토픽 구독을 감지하는 메서드
     @Override
@@ -58,6 +66,14 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
             // 채널 입장을 위한 세션 정보 등록 (roomId는 -1로)
             sessionManager.addSessionId(sessionId, channelId, "-1", userName);
+            sessionManager.userEnterChannel(channelId, userName);
+
+            memberService.enterChannel(userName, channelId);
+
+            int playerCount = sessionManager.getChannelUserCount(channelId);
+
+            applicationEventPublisher.publishEvent(
+                    new ChannelStatusChangedEvent(channelId, ChannelEventType.JOIN, playerCount));
         }
 
         // 방 토픽 구독인 경우 (방 입장)

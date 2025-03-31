@@ -34,11 +34,12 @@ public class RoomController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping
+    @GetMapping()
     public ResponseEntity<Page<RoomDTO>> getRooms(
+            @RequestParam Long channelId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "6") int size) {
-        Page<RoomDTO> roomsPage = roomService.getRooms(page, size);
+        Page<RoomDTO> roomsPage = roomService.getRooms(channelId, page, size);
         return ResponseEntity.ok(roomsPage);
     }
 

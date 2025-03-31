@@ -1,5 +1,7 @@
 package com.curioussong.alsongdalsong.member.service;
 
+import com.curioussong.alsongdalsong.channel.domain.Channel;
+import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
@@ -7,6 +9,7 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
@@ -16,6 +19,7 @@ import java.util.UUID;
 public class MemberService {
 
     private final MemberRepository memberRepository;
+    private final ChannelRepository channelRepository;
 
     public String guestLogin() {
         String token = "guest_" + UUID.randomUUID().toString().substring(0, 8);
@@ -62,5 +66,28 @@ public class MemberService {
         }
 
         return new UserLoginResponse(username);
+    }
+
+    @Transactional
+    public void enterChannel(String username, Long channelId) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("해당 멤버를 찾을 수 없습니다."));
+
+        Channel channel = channelRepository.findById(channelId)
+                .orElseThrow(() -> new EntityNotFoundException("해당 채널을 찾을 수 없습니다."));
+
+        member.enterChannel(channel);
+        log.info("사용자 {} 가 채널 {} 에 입장하였습니다.", username, channelId);
+        memberRepository.save(member);
+    }
+
+    @Transactional
+    public void leaveChannel(String username) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("해당 멤버를 찾을 수 없습니다."));
+
+        member.leaveChannel();
+        log.info("사용자 {} 가 채널에서 퇴장하였습니다.", username);
+        memberRepository.save(member);
     }
 }

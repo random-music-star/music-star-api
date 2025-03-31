@@ -18,7 +18,8 @@ public class RoomDTO {
     private Integer maxGameRound;
     private Integer playTime;
     private String status;
-    private Integer roomNumber;
+    private Long roomNumber;
+    private Long channelId;
     private boolean hasPassword;
     private List<GameMode> gameModes;
 

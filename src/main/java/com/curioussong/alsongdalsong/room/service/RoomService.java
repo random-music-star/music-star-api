@@ -1,7 +1,8 @@
 package com.curioussong.alsongdalsong.room.service;
 
+import com.curioussong.alsongdalsong.channel.domain.Channel;
+import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
 import com.curioussong.alsongdalsong.game.domain.Game;
-import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
@@ -44,20 +45,28 @@ public class RoomService {
     private final GameRepository gameRepository;
     private final RoomYearRepository roomYearRepository;
     private final RoomGameRepository roomGameRepository;
+    private final ChannelRepository channelRepository;
     private final RoomManager roomManager;
     private final InGameManager inGameManager;
     private final GameMessageSender gameMessageSender;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
+        Channel channel = channelRepository.findById(request.getChannelId())
+                .orElseThrow(() -> new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "존재하지 않는 채널입니다."
+                ));
+
         Room room = Room.builder()
+                .channel(channel)
                 .host(member)
                 .title(request.getTitle())
                 .password(request.getPassword())
                 .format(Room.RoomFormat.valueOf(request.getFormat()))
                 .build();
 
-        int roomNumber = generateRoomNumber();
+        Long roomNumber = generateRoomNumber(room.getChannel().getId());
         room.assignRoomNumber(roomNumber);
 
         room.addMember(member);
@@ -66,7 +75,10 @@ public class RoomService {
         // GameMode 리스트를 기반으로 해당 Game 검색
         List<Game> games = request.getGameModes().stream()
                 .map(gameMode -> gameRepository.findByMode(gameMode)
-                        .orElseThrow(()-> new EntityNotFoundException("해당하는 게임이 없습니다.")))
+                        .orElseThrow(()-> new HttpClientErrorException(
+                                HttpStatus.BAD_REQUEST,
+                                "해당하는 게임이 없습니다."
+                        )))
                 .toList();
 
         games.forEach(game -> roomGameRepository.save(new RoomGame(game, room)));
@@ -75,11 +87,13 @@ public class RoomService {
                 roomYearRepository.save(new RoomYear(room, year))
         );
 
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.UPDATED));
 
         roomManager.addRoomInfo(room, request.getChannelId());
 
         return CreateResponse.builder()
+                .channelId(room.getChannel().getId())
+                .roomNumber(room.getRoomNumber())
                 .roomId(room.getId())
                 .build();
     }
@@ -103,7 +117,7 @@ public class RoomService {
         gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
 
         eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), sessionId, userName));
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED));
     }
 
     @Transactional
@@ -141,7 +155,7 @@ public class RoomService {
         gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
 
 
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room, RoomUpdatedEvent.ActionType.DELETED));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED));
         log.debug("이벤트 발행 완료");
     }
 
@@ -184,17 +198,26 @@ public class RoomService {
         room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
 
         roomYearRepository.deleteAllByRoom(room);
-        request.getSelectedYears().forEach(year ->
-                roomYearRepository.save(new RoomYear(room, year))
-        );
+        roomYearRepository.flush();
+
+        List<RoomYear> newRoomYears = request.getSelectedYears().stream()
+                .distinct()
+                .map(year -> new RoomYear(room, year))
+                .toList();
+
+        roomYearRepository.saveAll(newRoomYears);
 
         roomManager.updateRoomInfo(room, request.getSelectedYears());
 
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room));
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.UPDATED));
     }
 
     @Transactional(readOnly=true)
-    public Page<RoomDTO> getRooms(int page, int size) {
+    public Page<RoomDTO> getRooms(Long channelId, int page, int size) {
+        if (channelId == null) {
+            throw new IllegalArgumentException("channelId는 필수입니다.");
+        }
+
         Pageable pageable = PageRequest.of(page, size);
 
         List<Room.RoomStatus> activeStatuses = Arrays.asList(
@@ -202,7 +225,9 @@ public class RoomService {
                 Room.RoomStatus.IN_PROGRESS
         );
 
-        Page<Room> roomPage = roomRepository.findByStatusInOrderByUpdatedAtDesc(activeStatuses, pageable);
+        Page<Room> roomPage = roomRepository.findByChannelIdAndStatusInOrderByUpdatedAtDesc(
+                channelId, activeStatuses, pageable
+        );
 
         return roomPage.map(Room::toDto);
     }
@@ -217,24 +242,6 @@ public class RoomService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         return room.getStatus() == Room.RoomStatus.IN_PROGRESS;
-    }
-
-    @Transactional(readOnly=true)
-    public LobbyResponse getRoomDataForLobby() {
-        Page<RoomDTO> roomPage = getRooms(0, 6);
-
-        for (RoomDTO roomDTO : roomPage.getContent()) {
-            String roomId = roomDTO.getId();
-            List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
-            roomDTO.setGameModes(gameModes);
-        }
-
-        return LobbyResponse.builder()
-                .rooms(roomPage.getContent())
-                .totalPages(roomPage.getTotalPages())
-                .totalElements(roomPage.getTotalElements())
-                .currentPage(roomPage.getNumber())
-                .build();
     }
 
     public boolean isRoomFinished(String roomId) {
@@ -265,8 +272,8 @@ public class RoomService {
     }
 
     @Transactional(readOnly = true)
-    public int generateRoomNumber() {
-        Integer maxRoomNumber = roomRepository.findMaxRoomNumber();
+    public Long generateRoomNumber(Long channelId) {
+        Long maxRoomNumber = roomRepository.findMaxRoomNumberByChannelId(channelId);
         return (maxRoomNumber != null) ? maxRoomNumber + 1 : 1;
     }
 }

@@ -6,7 +6,6 @@ import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
@@ -23,7 +22,6 @@ public class RoomEventListener {
     private final SseEmitterManager sseEmitterManager;
     private final RoomGameRepository roomGameRepository;
 
-    @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleRoomUpdatedEvent(RoomUpdatedEvent event) {
         log.info("RoomUpdatedEvent 발생 - roomId: {}, actionType: {}", event.room().getId(), event.actionType());
@@ -41,6 +39,6 @@ public class RoomEventListener {
             data.put("roomId", event.room().getId());
         }
 
-        sseEmitterManager.sendToAll("ROOM_UPDATED", data);
+        sseEmitterManager.sendToChannel(event.channelId(),"ROOM_UPDATED", data);
     }
 }

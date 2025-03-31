@@ -1,9 +1,13 @@
 package com.curioussong.alsongdalsong.stomp;
 
+import com.curioussong.alsongdalsong.channel.enums.ChannelEventType;
+import com.curioussong.alsongdalsong.channel.event.ChannelStatusChangedEvent;
 import com.curioussong.alsongdalsong.game.service.GameService;
+import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.util.Pair;
@@ -20,10 +24,11 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class StompUnsubscribeEventListener implements ApplicationListener<SessionUnsubscribeEvent> {
 
-    private final SimpMessagingTemplate messagingTemplate;
     private final RoomService roomService;
     private final GameService gameService;
     private final SessionManager sessionManager;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private final MemberService memberService;
 
     @EventListener
     public void handleSessionDisconnect(SessionDisconnectEvent event) {
@@ -74,6 +79,10 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
                 sessionManager.removeSessionId(sessionId);
 //                sendRoomInfoAndUserInfoToSubscribers(channelId, roomId);
             }
+            memberService.leaveChannel(userName);
+            sessionManager.userLeaveChannel(channelId, userName);
+            int playerCount = sessionManager.getChannelUserCount(channelId);
+            applicationEventPublisher.publishEvent(new ChannelStatusChangedEvent(channelId, ChannelEventType.LEAVE, playerCount));
         }
     }
 

@@ -53,6 +53,7 @@ public class GameStatusListener {
         data.put("room", roomDTO);
         data.put("actionType", "UPDATED");
 
-        sseEmitterManager.sendToAll("ROOM_UPDATED", data);
+        Long channelId = room.getChannel().getId();
+        sseEmitterManager.sendToChannel(channelId, "ROOM_UPDATED", data);
     }
 }

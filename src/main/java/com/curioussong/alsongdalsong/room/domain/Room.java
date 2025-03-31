@@ -1,7 +1,9 @@
 package com.curioussong.alsongdalsong.room.domain;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
+import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.github.f4b6a3.ulid.UlidCreator;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -54,7 +56,11 @@ public class Room {
     private RoomStatus status;
 
     @Column(name = "room_number", nullable = false)
-    private Integer roomNumber;
+    private Long roomNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "channel_id", nullable = false)
+    private Channel channel;
 
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
@@ -79,7 +85,7 @@ public class Room {
     }
 
     @Builder
-    public Room(Member host, String title, String password, Integer maxPlayer, Integer maxGameRound, RoomFormat format, Integer playTime, RoomStatus status) {
+    public Room(Member host, String title, String password, Integer maxPlayer, Integer maxGameRound, RoomFormat format, Integer playTime, RoomStatus status, Channel channel) {
         this.host = host;
         this.title = title;
         this.password = password;
@@ -88,6 +94,7 @@ public class Room {
         this.format = format == null ? RoomFormat.GENERAL : format;
         this.playTime = playTime == null ? 0 : playTime;
         this.status = status == null ? RoomStatus.WAITING : status;
+        this.channel = channel;
     }
 
     public void update(String title, String password, RoomFormat format){
@@ -109,6 +116,7 @@ public class Room {
                 .hasPassword(this.password != null && !this.password.isEmpty())
                 .status(this.status.name())
                 .roomNumber(this.roomNumber)
+                .channelId(this.channel.getId())
                 .build();
     }
 
@@ -130,7 +138,7 @@ public class Room {
         this.host = member;
     }
 
-    public void assignRoomNumber(Integer roomNumber) {
+    public void assignRoomNumber(Long roomNumber) {
         this.roomNumber = roomNumber;
     }
 }
