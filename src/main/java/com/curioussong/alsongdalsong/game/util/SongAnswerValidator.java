@@ -9,14 +9,14 @@ import java.util.List;
 public class SongAnswerValidator {
 
     // 채팅의 모든 공백 제거 및 대문자 치환
-    public static String extractAnswer(String answer) {
+    public String extractAnswer(String answer) {
         return answer.replaceAll("\\s+", "")
                 .replaceAll("\\([^)]*\\)", "")
                 .replaceAll("[^가-힣ㄱ-ㅎa-zA-Z0-9!@#$%^&*()]", "")
                 .toUpperCase();
     }
 
-    public static String convertNumbersToKorean(String text) {
+    public String convertNumbersToKorean(String text) {
         return text.replaceAll("0", "영")
                 .replaceAll("1", "일")
                 .replaceAll("2", "이")
@@ -29,12 +29,12 @@ public class SongAnswerValidator {
                 .replaceAll("9", "구");
     }
 
-    public static String convertSpecialCharactersToKorean(String text) {
+    public String convertSpecialCharactersToKorean(String text) {
         return text.replaceAll("%", "퍼센트")
                 .replaceAll("&", "앤");
     }
 
-    public static boolean isCorrectAnswer(String userAnswer, String koreanTitle, String englishTitle) {
+    public boolean isCorrectAnswer(String userAnswer, String koreanTitle, String englishTitle) {
         String processedUserAnswer = extractAnswer(userAnswer);
 
         String processedKoreanAnswer = extractAnswer(koreanTitle);

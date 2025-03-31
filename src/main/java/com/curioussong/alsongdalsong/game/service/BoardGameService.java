@@ -149,7 +149,8 @@ public class BoardGameService {
         String userAnswer = chatRequestDTO.getRequest().getMessage();
         Song song = inGameManager.getCurrentRoundSong(roomId);
         log.info("current song: {}", song.getKorTitle());
-        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
+        SongAnswerValidator validator = new SongAnswerValidator();
+        return validator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
     }
 
     public void handleAnswer(String userName, Long channelId, String roomId) {
