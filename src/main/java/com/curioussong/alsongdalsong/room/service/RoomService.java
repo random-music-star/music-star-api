@@ -3,6 +3,7 @@ package com.curioussong.alsongdalsong.room.service;
 import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
 import com.curioussong.alsongdalsong.game.domain.Game;
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -31,8 +33,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -172,6 +174,7 @@ public class RoomService {
         } else {
             // 방 삭제
             room.updateStatus(Room.RoomStatus.FINISHED);
+            eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.FINISHED));
         }
     }
 
@@ -225,11 +228,55 @@ public class RoomService {
                 Room.RoomStatus.IN_PROGRESS
         );
 
+        // 1. 기존 방식으로 방 목록 조회
         Page<Room> roomPage = roomRepository.findByChannelIdAndStatusInOrderByUpdatedAtDesc(
                 channelId, activeStatuses, pageable
         );
 
-        return roomPage.map(Room::toDto);
+        List<Room> rooms = roomPage.getContent();
+        if (rooms.isEmpty()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
+        }
+
+        // 2. 방 ID 목록 추출
+        List<String> roomIds = rooms.stream()
+                .map(Room::getId)
+                .collect(Collectors.toList());
+
+        // 3. 한 번에 모든 방의 RoomYear와 RoomGame 정보 조회
+        List<RoomYear> allRoomYears = roomYearRepository.findByRoomIdIn(roomIds);
+        List<RoomGame> allRoomGames = roomGameRepository.findByRoomIdIn(roomIds);
+
+        // 4. 방 ID별로 그룹화
+        Map<String, List<Integer>> yearsByRoomId = new HashMap<>();
+        for (RoomYear roomYear : allRoomYears) {
+            String roomId = roomYear.getRoom().getId();
+            yearsByRoomId.computeIfAbsent(roomId, k -> new ArrayList<>())
+                    .add(roomYear.getYear());
+        }
+
+        Map<String, List<GameMode>> gameModesByRoomId = new HashMap<>();
+        for (RoomGame roomGame : allRoomGames) {
+            String roomId = roomGame.getRoom().getId();
+            gameModesByRoomId.computeIfAbsent(roomId, k -> new ArrayList<>())
+                    .add(roomGame.getGame().getMode());  // getGameMode() -> getMode()
+        }
+
+        // 5. DTO 변환
+        List<RoomDTO> roomDtos = rooms.stream()
+                .map(room -> {
+                    RoomDTO baseDto = room.toDto();
+                    String roomId = room.getId();
+
+                    // GameMode와 years 정보 설정
+                    baseDto.setGameModes(gameModesByRoomId.get(roomId));
+                    baseDto.setYears(yearsByRoomId.get(roomId));
+
+                    return baseDto;
+                })
+                .collect(Collectors.toList());
+
+        return new PageImpl<>(roomDtos, pageable, roomPage.getTotalElements());
     }
 
     public boolean isRoomFull(String roomId) {

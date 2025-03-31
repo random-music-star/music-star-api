@@ -29,13 +29,13 @@ public class RoomEventListener {
         Map<String, Object> data = new HashMap<>();
         data.put("actionType", event.actionType().name());
 
-        if (event.actionType() != RoomUpdatedEvent.ActionType.DELETED) {
+        if (event.actionType() != RoomUpdatedEvent.ActionType.FINISHED) {
             RoomDTO roomDTO = event.room().toDto();
             List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomDTO.getId());
             roomDTO.setGameModes(gameModes);
             data.put("room", roomDTO);
         } else {
-            log.info("방 삭제 이벤트 발생");
+            log.info("방 종료 이벤트 발생");
             data.put("roomId", event.room().getId());
         }
 

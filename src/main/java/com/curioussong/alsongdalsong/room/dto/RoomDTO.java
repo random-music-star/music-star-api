@@ -22,8 +22,13 @@ public class RoomDTO {
     private Long channelId;
     private boolean hasPassword;
     private List<GameMode> gameModes;
+    private List<Integer> years;
 
     public void setGameModes(List<GameMode> gameModes) {
         this.gameModes = gameModes;
+    }
+
+    public void setYears(List<Integer> years) {
+        this.years = years;
     }
 }
