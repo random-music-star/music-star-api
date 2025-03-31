@@ -111,6 +111,7 @@ public class RoomService {
                 .orElseThrow(() -> new EntityNotFoundException("해당 회원이 없습니다."));;
 
         room.addMember(member);
+        roomManager.getReadyStatus(roomId).put(member.getId(), false);
 
         gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(roomId), roomManager.getGameModes(roomId));
 
