@@ -53,6 +53,9 @@ public class Room {
     @Column(name = "status", nullable = false)
     private RoomStatus status;
 
+    @Column(name = "room_number", nullable = false)
+    private Integer roomNumber;
+
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
@@ -105,6 +108,7 @@ public class Room {
                 .playTime(this.playTime)
                 .hasPassword(this.password != null && !this.password.isEmpty())
                 .status(this.status.name())
+                .roomNumber(this.roomNumber)
                 .build();
     }
 
@@ -124,5 +128,9 @@ public class Room {
 
     public void updateHost(Member member) {
         this.host = member;
+    }
+
+    public void assignRoomNumber(Integer roomNumber) {
+        this.roomNumber = roomNumber;
     }
 }
