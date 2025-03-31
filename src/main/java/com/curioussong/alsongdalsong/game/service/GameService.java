@@ -60,16 +60,18 @@ public class GameService {
             // Skip 요청 처리
             if (".".equals(chatRequestDTO.getRequest().getMessage())) {
                 generalGameService.incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
-            }
-            if (generalGameService.checkAnswer(chatRequestDTO, roomId)) {
-                generalGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
+            } else {
+                if (generalGameService.checkAnswer(chatRequestDTO, roomId)) {
+                    generalGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
+                }
             }
         } else if (room.getFormat()== Room.RoomFormat.BOARD) {
             if (".".equals(chatRequestDTO.getRequest().getMessage())) {
                 boardGameService.incrementSkipCount(roomId, channelId, chatRequestDTO.getRequest().getSender());
-            }
-            if (boardGameService.checkAnswer(chatRequestDTO, roomId)) {
-                boardGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
+            } else {
+                if (boardGameService.checkAnswer(chatRequestDTO, roomId)) {
+                    boardGameService.handleAnswer(chatRequestDTO.getRequest().getSender(), channelId, roomId);
+                }
             }
         }
     }

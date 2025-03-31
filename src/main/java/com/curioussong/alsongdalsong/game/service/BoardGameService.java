@@ -153,10 +153,8 @@ public class BoardGameService {
     }
 
     public void handleAnswer(String userName, Long channelId, String roomId) {
-        log.info("handleAnswer called");
         // 이미 정답을 맞춘 라운드이면 통과
         if (inGameManager.isAnswered(roomId)) {
-            log.info("already answered: {}", roomId);
             return;
         }
 
