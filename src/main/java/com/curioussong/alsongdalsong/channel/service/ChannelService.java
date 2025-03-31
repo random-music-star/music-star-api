@@ -44,7 +44,7 @@ public class ChannelService {
     public void notifyChannelUpdate(Long channelId){
         try{
             ChannelResponse channelResponse = getChannelById(channelId);
-            sseEmitterManager.sendToAll("CHANNEL_UPDATE", channelResponse);
+            sseEmitterManager.sendToChannelSelectors("CHANNEL_UPDATE", channelResponse);
             log.debug("[SSE] 채널 상태 알림 전송 완료: channelId={}, playerCount={}", channelId, channelResponse.playerCount());
         } catch (EntityNotFoundException e) {
             log.warn("[SSE] 존재하지 않는 채널 요청: channelId={}, message={}", channelId, e.getMessage());

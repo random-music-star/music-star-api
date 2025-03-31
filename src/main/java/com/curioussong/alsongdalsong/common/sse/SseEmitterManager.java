@@ -13,43 +13,52 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 public class SseEmitterManager {
 
-    private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private final Map<String, SseEmitter> selectorEmitters = new ConcurrentHashMap<>();
+    private final Map<String, SseEmitter> channelEmitters = new ConcurrentHashMap<>();
+
     private final Map<Long, Set<String>> channelSubscribers = new ConcurrentHashMap<>();
+    private final Set<String> channelSelectorUsers = ConcurrentHashMap.newKeySet();
 
     public SseEmitter addToChannel(String sessionId, Long channelId, Long timeout) {
-        if (emitters.containsKey(sessionId)) {
-            log.info("기존 SSE 연결 제거: sessionId={}", sessionId);
-            removeFromAllChannels(sessionId);
-        }
+        cleanupChannelSession(sessionId);
+        cleanupSelectorSession(sessionId);
 
         SseEmitter emitter = new SseEmitter(timeout);
-        emitters.put(sessionId, emitter);
-        log.debug("새 SSE 연결 추가: {}, 총 연결 수: {}", sessionId, emitters.size());
+        channelEmitters.put(sessionId, emitter);
+        channelSubscribers.computeIfAbsent(channelId, k -> ConcurrentHashMap.newKeySet()).add(sessionId);
 
-        channelSubscribers.computeIfAbsent(channelId, k -> ConcurrentHashMap.newKeySet())
-                .add(sessionId);
+        log.debug("채널 {} 로비 SSE 연결 추가: {}, 총 연결 수: {}", channelId, sessionId, channelEmitters.size());
 
-        log. debug("채널 {} 로비 SSE 연결 추가: {}, 총 연결 수 : {}", channelId, sessionId, emitters.size());
-
-        emitter.onCompletion(() -> {
-            log.debug("SSE 연결 종료: {}", sessionId);
-            removeFromAllChannels(sessionId);
-        });
-
-        emitter.onTimeout(() -> {
-            log.debug("SSE 연결 타임아웃: {}", sessionId);
-            removeFromAllChannels(sessionId);
-        });
-
-        emitter.onError(e -> {
-            log.warn("SSE 연결 에러: {}, 에러: {}", sessionId, e.getMessage());
-            removeFromAllChannels(sessionId);
-        });
-
-        return emitter;
+        return registerChannelEmitterCleanup(sessionId, emitter);
     }
 
-    private void removeFromAllChannels(String sessionId) {
+    public SseEmitter addForChannelSelection(String sessionId, long timeout) {
+        cleanupSelectorSession(sessionId);
+        cleanupChannelSession(sessionId);
+
+        SseEmitter emitter = new SseEmitter(timeout);
+        selectorEmitters.put(sessionId, emitter);
+        channelSelectorUsers.add(sessionId);
+
+        log.debug("채널 선택 화면 SSE 연결 추가: {}, 총 연결 수: {}", sessionId, selectorEmitters.size());
+
+        return registerSelectorEmitterCleanup(sessionId, emitter);
+    }
+
+    private void cleanupSelectorSession(String sessionId) {
+        SseEmitter emitter = selectorEmitters.remove(sessionId);
+        if (emitter != null) {
+            try {
+                emitter.complete();
+                log.debug("채널 목록 SSE 연결 제거: {}", sessionId);
+            } catch (Exception e) {
+                log.warn("채널 목록 SSE 종료 중 에러: {}", sessionId, e);
+            }
+        }
+        channelSelectorUsers.remove(sessionId);
+    }
+
+    private void cleanupChannelSession(String sessionId) {
         channelSubscribers.forEach((channelId, subscribers) -> {
             subscribers.remove(sessionId);
             if (subscribers.isEmpty()) {
@@ -57,110 +66,82 @@ public class SseEmitterManager {
             }
         });
 
-        remove(sessionId);
-    }
-
-    public void remove(String sessionId) {
-        SseEmitter emitter = emitters.remove(sessionId);
+        SseEmitter emitter = channelEmitters.remove(sessionId);
         if (emitter != null) {
             try {
                 emitter.complete();
-                log.debug("SSE 연결 제거: {}, 남은 연결 수: {}", sessionId, emitters.size());
+                log.debug("채널 SSE 연결 제거: {}", sessionId);
             } catch (Exception e) {
-                log.warn("SSE 연결 종료 중 에러: {}", sessionId, e);
+                log.warn("채널 SSE 종료 중 에러: {}", sessionId, e);
             }
         }
+    }
+
+    private SseEmitter registerChannelEmitterCleanup(String sessionId, SseEmitter emitter) {
+        emitter.onCompletion(() -> cleanupChannelSession(sessionId));
+        emitter.onTimeout(() -> cleanupChannelSession(sessionId));
+        emitter.onError(e -> cleanupChannelSession(sessionId));
+        return emitter;
+    }
+
+    private SseEmitter registerSelectorEmitterCleanup(String sessionId, SseEmitter emitter) {
+        emitter.onCompletion(() -> cleanupSelectorSession(sessionId));
+        emitter.onTimeout(() -> cleanupSelectorSession(sessionId));
+        emitter.onError(e -> cleanupSelectorSession(sessionId));
+        return emitter;
     }
 
     @Async
     public void sendToChannel(Long channelId, String eventName, Object data) {
         Set<String> subscribers = channelSubscribers.get(channelId);
-        if (subscribers == null || subscribers.isEmpty()) {
-            return;
-        }
-        log.debug("채널 {} 구독자들에게 '{}' 이벤트 전송, 대상 연결 수: {}",
-                channelId, eventName, subscribers.size());
+        if (subscribers == null || subscribers.isEmpty()) return;
 
-        subscribers.forEach(sessionId -> {
-            SseEmitter emitter = emitters.get(sessionId);
+        log.debug("채널 {} 구독자에게 '{}' 이벤트 전송", channelId, eventName);
+
+        for (String sessionId : subscribers) {
+            SseEmitter emitter = channelEmitters.get(sessionId);
             if (emitter != null) {
                 try {
-                    emitter.send(SseEmitter.event()
-                            .name(eventName)
-                            .data(data));
+                    emitter.send(SseEmitter.event().name(eventName).data(data));
                 } catch (Exception e) {
-                    log.warn("채널 {} 구독자({})에게 이벤트({}) 전송 실패: {}",
-                            channelId, sessionId, eventName, e.getMessage());
-                    removeFromAllChannels(sessionId);
+                    log.warn("채널 이벤트 전송 실패: {}, {}", sessionId, e.getMessage());
+                    cleanupChannelSession(sessionId);
                 }
             }
-        });
+        }
     }
 
     @Async
-    public void sendToAll(String eventName, Object data) {
-        if(emitters.isEmpty()) {
-            return;
-        }
-
-        log.debug("모든 클라이언트에게 '{}' 이벤트 전송, 대상 연결 수: {}", eventName, emitters.size());
-
-        emitters.forEach((sessionId, emitter) -> {
-            try {
-                emitter.send(SseEmitter.event()
-                        .name(eventName)
-                        .data(data));
-            } catch (Exception e) {
-                log.warn("클라이언트({})에게 이벤트({}) 전송 실패: {}", sessionId, eventName, e.getMessage());
-                remove(sessionId);
+    public void sendToChannelSelectors(String eventName, Object data) {
+        for (String sessionId : channelSelectorUsers) {
+            SseEmitter emitter = selectorEmitters.get(sessionId);
+            if (emitter != null) {
+                try {
+                    emitter.send(SseEmitter.event().name(eventName).data(data));
+                } catch (Exception e) {
+                    log.warn("채널 목록 이벤트 전송 실패: {}, {}", sessionId, e.getMessage());
+                    cleanupSelectorSession(sessionId);
+                }
             }
-        });
+        }
     }
 
     @Scheduled(fixedRate = 60000)
     public void sendHeartbeat() {
-        if (emitters.isEmpty()) {
-            return;
-        }
-
-        log.debug("하트비트 이벤트 전송, 대상 연결 수: {}", emitters.size());
-        emitters.forEach((sessionId, emitter) -> {
+        selectorEmitters.forEach((sessionId, emitter) -> {
             try {
-                emitter.send(SseEmitter.event()
-                        .name("HEARTBEAT")
-                        .data(""));
+                emitter.send(SseEmitter.event().name("HEARTBEAT").data(""));
             } catch (Exception e) {
-                log.debug("하트비트 전송 실패로 연결 제거: {}", sessionId);
-                removeFromAllChannels(sessionId);
+                cleanupSelectorSession(sessionId);
             }
         });
-    }
 
-    public SseEmitter addForChannelSelection(String sessionId, long timeout) {
-        if(emitters.containsKey(sessionId)) {
-            log.debug("기존 SSE 연결 제거 : sessionId={}", sessionId);
-            remove(sessionId);
-        }
-
-        SseEmitter emitter = new SseEmitter(timeout);
-        emitters.put(sessionId, emitter);
-        log.debug("채널 선택 화면 SSE 연결 추가: {}, 총 연결 수: {}", sessionId, emitters.size());
-
-        emitter.onCompletion(() -> {
-            log.debug("SSE 연결 종료: {}", sessionId);
-            remove(sessionId);
+        channelEmitters.forEach((sessionId, emitter) -> {
+            try {
+                emitter.send(SseEmitter.event().name("HEARTBEAT").data(""));
+            } catch (Exception e) {
+                cleanupChannelSession(sessionId);
+            }
         });
-
-        emitter.onTimeout(() -> {
-            log.debug("SSE 연결 타임아웃: {}", sessionId);
-            remove(sessionId);
-        });
-
-        emitter.onError(e -> {
-            log.warn("SSE 연결 에러: {}, 에러: {}", sessionId, e.getMessage());
-            remove(sessionId);
-        });
-
-        return emitter;
     }
 }
