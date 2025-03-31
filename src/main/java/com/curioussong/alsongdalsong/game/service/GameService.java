@@ -51,6 +51,11 @@ public class GameService {
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+
+        if (room.getStatus() == Room.RoomStatus.WAITING) {
+            return;
+        }
+
         if (room.getFormat()== Room.RoomFormat.GENERAL) {
             // Skip 요청 처리
             if (".".equals(chatRequestDTO.getRequest().getMessage())) {
