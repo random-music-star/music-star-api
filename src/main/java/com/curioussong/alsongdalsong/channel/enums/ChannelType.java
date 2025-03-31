@@ -13,7 +13,8 @@ public enum ChannelType {
     Name2(2L),
     Name3(3L),
     Name4(4L),
-    Name5(5L);
+    Name5(5L),
+    Name6(6L);
 
     private final Long id;
 
