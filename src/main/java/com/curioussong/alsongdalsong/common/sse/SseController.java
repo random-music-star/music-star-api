@@ -4,10 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -65,5 +62,13 @@ public class SseController {
             emitter.completeWithError(e);
         }
         return emitter;
+    }
+
+    @PostMapping("/sse/disconnect")
+    public void disconnect(HttpServletRequest request) {
+        String sessionId = request.getSession().getId();
+        emitterManager.cleanupChannelSession(sessionId);
+        emitterManager.cleanupSelectorSession(sessionId);
+        log.info("SSE 연결 명시적 종료 요청: sessionId={}", sessionId);
     }
 }

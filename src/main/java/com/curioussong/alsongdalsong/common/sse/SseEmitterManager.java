@@ -45,7 +45,7 @@ public class SseEmitterManager {
         return registerSelectorEmitterCleanup(sessionId, emitter);
     }
 
-    private void cleanupSelectorSession(String sessionId) {
+    protected void cleanupSelectorSession(String sessionId) {
         SseEmitter emitter = selectorEmitters.remove(sessionId);
         if (emitter != null) {
             try {
@@ -58,7 +58,7 @@ public class SseEmitterManager {
         channelSelectorUsers.remove(sessionId);
     }
 
-    private void cleanupChannelSession(String sessionId) {
+    protected void cleanupChannelSession(String sessionId) {
         channelSubscribers.forEach((channelId, subscribers) -> {
             subscribers.remove(sessionId);
             if (subscribers.isEmpty()) {
