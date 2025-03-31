@@ -18,11 +18,11 @@ public class RoomDTO {
     private Integer maxGameRound;
     private Integer playTime;
     private String status;
+    private Integer roomNumber;
     private boolean hasPassword;
     private List<GameMode> gameModes;
 
-    public RoomDTO setGameModes(List<GameMode> gameModes) {
+    public void setGameModes(List<GameMode> gameModes) {
         this.gameModes = gameModes;
-        return this;
     }
 }

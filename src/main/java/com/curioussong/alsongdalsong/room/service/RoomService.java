@@ -54,6 +54,9 @@ public class RoomService {
                 .format(Room.RoomFormat.valueOf(request.getFormat()))
                 .build();
 
+        int roomNumber = generateRoomNumber();
+        room.assignRoomNumber(roomNumber);
+
         room.addMember(member);
         roomRepository.save(room);
 
@@ -239,5 +242,11 @@ public class RoomService {
                 .roomId(request.getRoomId())
                 .success(true)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public int generateRoomNumber() {
+        Integer maxRoomNumber = roomRepository.findMaxRoomNumber();
+        return (maxRoomNumber != null) ? maxRoomNumber + 1 : 1;
     }
 }
