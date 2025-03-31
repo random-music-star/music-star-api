@@ -193,13 +193,14 @@ public class GeneralGameService {
         String userAnswer = chatRequestDTO.getRequest().getMessage();
         Song song = inGameManager.getCurrentRoundSong(roomId);
         log.info("current song: {}", song.getKorTitle());
-        SongAnswerValidator validator = new SongAnswerValidator();
-        return validator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
+        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
     }
 
     public void handleAnswer(String userName, Long channelId, String roomId) {
+        log.info("handleAnswer");
         // 이미 정답을 맞춘 라운드이면 통과
         if (inGameManager.isAnswered(roomId)) {
+            log.info("answer already answered");
             return;
         }
 
