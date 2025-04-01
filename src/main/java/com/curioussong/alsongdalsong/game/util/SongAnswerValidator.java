@@ -55,22 +55,14 @@ public class SongAnswerValidator {
                 .replaceAll("@", "AT");
     }
 
+    public static String removeSomeSpecialCharacters(String text) {
+        return text.replaceAll("[.=,'\"-]", "");
+    }
+
     public static boolean isCorrectAnswer(String userAnswer, String koreanTitle, String englishTitle) {
         String processedUserAnswer = extractAnswer(userAnswer);
 
         List<String> correctAnswers = new ArrayList<>();
-
-        if (!englishTitle.isBlank()) {
-            correctAnswers.add(englishTitle);
-            String preprocessedEnglishAnswer = extractAnswer(englishTitle);
-            correctAnswers.add(preprocessedEnglishAnswer);
-            String removeParenthesesEnglishTitle = preprocessedEnglishAnswer.replaceAll("\\(.*?\\)", "");
-            correctAnswers.add(removeParenthesesEnglishTitle);
-            String substituteNumberEnglishTitle = convertNumbersToEnglish(removeParenthesesEnglishTitle);
-            correctAnswers.add(substituteNumberEnglishTitle);
-            String substituteSpecialEnglishTitle = convertSpecialCharactersToEnglish(substituteNumberEnglishTitle);
-            correctAnswers.add(substituteSpecialEnglishTitle);
-        }
 
         // 원본 제목 추가
         correctAnswers.add(koreanTitle);
@@ -90,6 +82,24 @@ public class SongAnswerValidator {
         // 특수 문자 발음하여 변환
         String substituteSpecialKoreanTitle = convertSpecialCharactersToKorean(substituteNumberKoreanTitle);
         correctAnswers.add(substituteSpecialKoreanTitle);
+
+        // 온점, 반점, 따옴표, 쌍따옴표 제거
+        String removeSomeSpecialCharacterKoreanTitle = removeSomeSpecialCharacters(removeParenthesesKoreanTitle);
+        correctAnswers.add(removeSomeSpecialCharacterKoreanTitle);
+
+        if (!englishTitle.isBlank()) {
+            correctAnswers.add(englishTitle);
+            String preprocessedEnglishAnswer = extractAnswer(englishTitle);
+            correctAnswers.add(preprocessedEnglishAnswer);
+            String removeParenthesesEnglishTitle = preprocessedEnglishAnswer.replaceAll("\\(.*?\\)", "");
+            correctAnswers.add(removeParenthesesEnglishTitle);
+            String substituteNumberEnglishTitle = convertNumbersToEnglish(removeParenthesesEnglishTitle);
+            correctAnswers.add(substituteNumberEnglishTitle);
+            String substituteSpecialEnglishTitle = convertSpecialCharactersToEnglish(substituteNumberEnglishTitle);
+            correctAnswers.add(substituteSpecialEnglishTitle);
+            String removeSomeSpecialCharacterEnglishTitle = removeSomeSpecialCharacters(removeParenthesesEnglishTitle);
+            correctAnswers.add(removeSomeSpecialCharacterEnglishTitle);
+        }
 
         log.debug("사용자가 입력한 정답 : {}", processedUserAnswer);
         log.debug("정답 목록 : {}", correctAnswers);
