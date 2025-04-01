@@ -1,13 +1,11 @@
 package com.curioussong.alsongdalsong.game.service;
 
-import com.curioussong.alsongdalsong.game.board.BoardEventHandler;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
-import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -34,8 +32,6 @@ public class GameService {
     private final RoomManager roomManager;
     private final InGameManager inGameManager;
     private final GameMessageSender gameMessageSender;
-    private final GameTimerManager gameTimerManager;
-    private final BoardEventHandler boardEventHandler;
     private final GeneralGameService generalGameService;
     private final BoardGameService boardGameService;
 

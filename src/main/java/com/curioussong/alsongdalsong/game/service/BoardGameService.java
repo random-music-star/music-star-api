@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -93,7 +94,7 @@ public class BoardGameService {
 
         gameMessageSender.sendNextMessage(destination,
                 winner,
-                isWinnerExist ? 4 : 0);
+                isWinnerExist ? inGameManager.getUserMovement(room.getId()).get(winner) : 0);
 
         if (isWinnerExist) {
             try {
@@ -161,8 +162,9 @@ public class BoardGameService {
             return;
         }
 
-//      int scoreToAdd = calculateScore(); // 추후 구현
-        int scoreToAdd = 4;
+        int scoreToAdd = calculateScore();
+        log.debug("score to add: {}", scoreToAdd);
+
         inGameManager.getUserMovement(roomId).put(userName, scoreToAdd); // 정답자 이동 예정 횟수 갱신
 
         // 방의 현재 라운드 정답자 저장
@@ -175,6 +177,11 @@ public class BoardGameService {
         gameTimerManager.cancelHintTimers(roomId);
 
         sendGameResult(destination, roomId, userName);
+    }
+
+    private int calculateScore() {
+        SecureRandom random = new SecureRandom();
+        return random.nextInt(1, 4);
     }
 
     @Transactional
