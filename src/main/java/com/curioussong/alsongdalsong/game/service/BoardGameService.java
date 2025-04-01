@@ -72,6 +72,7 @@ public class BoardGameService {
         Song currentRoundSong = inGameManager.getRoundInfo(room.getId()).get(currentRound).getSecond();
         gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, room.getId(), () -> {
             // 카운트다운 완료 후 실행될 코드
+            inGameManager.resetAnswered(room.getId());
             gameTimerManager.scheduleSongPlayTime(
                     destination,
                     inGameManager.getCurrentRoundSong(room.getId()).getPlayTime(),
@@ -110,7 +111,6 @@ public class BoardGameService {
             }
         }
         inGameManager.nextRound(room.getId());
-        inGameManager.updateIsAnswered(room.getId());
         startRound(channelId, room, destination);
     }
 
@@ -169,7 +169,7 @@ public class BoardGameService {
         inGameManager.getRoundWinner(roomId).put(roomId, userName);
 
         // 정답 맞춘 상태 처리
-        inGameManager.updateIsAnswered(roomId);
+        inGameManager.markAsAnswered(roomId);
 
         String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         gameTimerManager.cancelHintTimers(roomId);

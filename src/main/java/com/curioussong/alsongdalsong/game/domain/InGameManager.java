@@ -93,9 +93,14 @@ public class InGameManager {
         inGameInfo.setCurrentRound(inGameInfo.getCurrentRound() + 1);
     }
 
-    public void updateIsAnswered(String roomId) {
+    public void markAsAnswered(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
-        inGameInfo.setAnswered(!inGameInfo.isAnswered());
+        inGameInfo.setAnswered(true);
+    }
+
+    public void resetAnswered(String roomId) {
+        InGameInfo inGameInfo = getInGameInfo(roomId);
+        inGameInfo.setAnswered(false);
     }
 
     public Song getCurrentRoundSong(String roomId) {
