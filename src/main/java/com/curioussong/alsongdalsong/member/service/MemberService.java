@@ -3,6 +3,7 @@ package com.curioussong.alsongdalsong.member.service;
 import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
 import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -11,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -89,5 +92,12 @@ public class MemberService {
         member.leaveChannel();
         log.info("사용자 {} 가 채널에서 퇴장하였습니다.", username);
         memberRepository.save(member);
+    }
+
+    public List<MemberStatusDTO> getChannelMembers(Long channelId) {
+        return memberRepository.findByCurrentChannelIdWithRoom(channelId)
+                .stream()
+                .map(MemberStatusDTO::from)
+                .toList();
     }
 }
