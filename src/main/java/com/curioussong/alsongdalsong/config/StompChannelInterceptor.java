@@ -25,7 +25,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
-        if (accessor.getCommand() == null && (message.getPayload() == null || message.getPayload().equals(""))) {
+        if (accessor.getCommand() == null) {
             log.info("Received a heartbeat from session: {}", accessor.getSessionId());
             return message;
         }
