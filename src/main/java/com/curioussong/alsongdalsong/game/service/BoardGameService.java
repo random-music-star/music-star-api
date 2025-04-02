@@ -118,27 +118,29 @@ public class BoardGameService {
     private void handleSendingPositionMessage(String destination, String roomId, String currentRoundWinner) {
         Map<String, Integer> userMovement = inGameManager.getUserMovement(roomId);
         Map<String, Integer> userScores = inGameManager.getScore(roomId);
-        while (userMovement.get(currentRoundWinner) > 0) {
-            userMovement.put(currentRoundWinner, userMovement.get(currentRoundWinner) - 1);
-            userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
+        try {
             gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
+            Thread.sleep(700);
+            while (userMovement.get(currentRoundWinner) > 0) {
+                userMovement.put(currentRoundWinner, userMovement.get(currentRoundWinner) - 1);
+                userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
+                gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
 
-            if (userScores.get(currentRoundWinner) >= 19) { // 목표 지점 도달 시
-                return;
-            }
+                if (userScores.get(currentRoundWinner) >= 19) { // 목표 지점 도달 시
+                    return;
+                }
 
-            try {
                 Thread.sleep(700);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
             }
+
+            int playerCount = userScores.size();
+
+            // 이벤트 생성 및 처리
+            BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(currentRoundWinner, playerCount, roomId);
+            boardEventHandler.handleEvent(destination, roomId, eventResponse);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
-
-        int playerCount = userScores.size();
-
-        // 이벤트 생성 및 처리
-        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(currentRoundWinner, playerCount, roomId);
-        boardEventHandler.handleEvent(destination, roomId, eventResponse);
     }
 
     private void sendGameResult(String destination, String roomId, String userName) {
