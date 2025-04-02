@@ -31,7 +31,7 @@ public class GlobalExceptionHandler {
         }
         // GameMode Enum 변환 오류 처리
         else if (message.contains("Cannot deserialize value of type") && message.contains("GameMode")) {
-            message = "지원하지 않는 게임모드가 포함되어 있습니다. 유효한 값: ONE_SEC, FULL";
+            message = "지원하지 않는 게임모드가 포함되어 있습니다.";
         }
         // 기타 역직렬화 오류 처리
         else if (message.contains("Cannot deserialize value of type")) {

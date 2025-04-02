@@ -5,13 +5,15 @@ import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.song.service.SongService;
+import com.curioussong.alsongdalsong.ttssong.domain.TtsSong;
+import com.curioussong.alsongdalsong.ttssong.repository.TtsSongRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -23,6 +25,7 @@ public class InGameManager {
     private final Map<String, InGameInfo> inGameMap = new ConcurrentHashMap<>();
     private final SongService songService;
     private final RoomManager roomManager;
+    private final TtsSongRepository ttsSongRepository;
 
     public void initializeGameSettings(Room room) {
         InGameInfo inGameInfo = new InGameInfo();
@@ -55,16 +58,27 @@ public class InGameManager {
     private void initializeSongs(InGameInfo inGameInfo, Room room) {
         RoomInfo roomInfo = roomManager.getRoomInfo(room.getId());
         List<Song> selectedSongs = songService.getRandomSongByYear(roomInfo.getSelectedYears(), room.getMaxGameRound());
+        List<TtsSong> selectedTtsSongs = ttsSongRepository.findRandomTtsSongsByYears(roomInfo.getSelectedYears(), room.getMaxGameRound());
         List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(room.getId());
-        Random random = new Random();
 
-        for (int i = 0; i < room.getMaxGameRound(); i++) {
-            int randomIndex = random.nextInt(gameModes.size());
-            GameMode gameMode = gameModes.get(randomIndex);
-            Song song = selectedSongs.get(i);
+        for (int round = 1; round <= room.getMaxGameRound(); round++) {
+            GameMode gameMode = getRandomGameMode(gameModes);
+            Song selectedSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, round - 1);
 
-            inGameInfo.getRoundInfo().put(i+1, Pair.of(gameMode, song));
+            inGameInfo.getRoundInfo().put(round, Pair.of(gameMode, selectedSong));
         }
+    }
+
+    private GameMode getRandomGameMode(List<GameMode> gameModes) {
+        SecureRandom random = new SecureRandom();
+        return gameModes.get(random.nextInt(gameModes.size()));
+    }
+
+    private Song selectSongForRound(GameMode gameMode, List<Song> randomSongs, List<TtsSong> randomTtsSongs, int index) {
+        if (gameMode == GameMode.TTS) {
+            return songService.ttsSongToSong(randomTtsSongs.get(index));
+        }
+        return randomSongs.get(index); // GameMode.FULL
     }
 
     public void initializeSkipStatus(Room room) {

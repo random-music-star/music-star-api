@@ -80,7 +80,7 @@ public class BoardEventHandler {
 
             log.info("Event triggered: type={}, trigger={}", eventType, trigger);
 
-            Thread.sleep(1500);
+            Thread.sleep(3000);
 
             // 3. 이벤트 종료 메시지 전송
             gameMessageSender.sendEventEnd(destination);
