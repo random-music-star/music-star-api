@@ -10,6 +10,7 @@ import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.*;
@@ -65,6 +66,7 @@ public class RoomService {
         validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
 
         Room room = createRoomEntity(member, channel, request);
+        eventPublisher.publishEvent(new MemberLocationEvent(channel.getId(), member));
         setupRoomGames(room, request.getGameModes());
         setupRoomYears(room, request.getSelectedYears());
         notifyRoomCreation(room, request.getChannelId());
@@ -88,6 +90,7 @@ public class RoomService {
 
         eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), sessionId, userName));
         eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED));
+        eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
     }
 
     @Transactional
@@ -118,6 +121,7 @@ public class RoomService {
             sendRoomAndUserInfo(channelId, roomId, room);
             eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED));
         }
+        eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
         log.debug("이벤트 발행 완료");
     }
 

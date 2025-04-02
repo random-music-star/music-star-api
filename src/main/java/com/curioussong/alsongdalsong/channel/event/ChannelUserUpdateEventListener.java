@@ -27,10 +27,13 @@ public class ChannelUserUpdateEventListener {
         ChannelEventType eventType = event.eventType();
 
         Map<String, Object> userData = new HashMap<>();
-        userData.put("member", memberStatus);
 
-        String eventName = eventType == ChannelEventType.JOIN ? "USER_JOINED_CHANNEL" : "USER_LEFT_CHANNEL";
-
-        sseEmitterManager.sendToChannel(channelId, eventName, userData);
+        if(eventType == ChannelEventType.JOIN){
+            userData.put("member", memberStatus);
+            sseEmitterManager.sendToChannel(channelId, "USER_JOINED_CHANNEL", userData);
+        } else if(eventType == ChannelEventType.LEAVE){
+            userData.put("username", memberStatus.getUsername());
+            sseEmitterManager.sendToChannel(channelId, "USER_LEFT_CHANNEL", userData);
+        }
     }
 }

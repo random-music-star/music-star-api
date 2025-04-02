@@ -10,6 +10,8 @@ import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
+import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
@@ -17,6 +19,7 @@ import com.curioussong.alsongdalsong.song.domain.Song;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +44,7 @@ public class BoardGameService {
     private final GameMessageSender gameMessageSender;
     private final GameTimerManager gameTimerManager;
     private final BoardEventHandler boardEventHandler;
+    private final ApplicationEventPublisher eventPublisher;
 
     public void startRound(Long channelId, Room room, String destination) {
         int currentRound = inGameManager.getCurrentRound(room.getId());
@@ -254,6 +258,12 @@ public class BoardGameService {
 
         // 게임 종료 시 WAITING 상태로 변경
         room.updateStatus(Room.RoomStatus.WAITING);
+
+        roomRepository.save(room);
+        Long channelId = room.getChannel().getId();
+        for (Member member : room.getMembers()) {
+            eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
+        }
 
         ScheduledExecutorService tempScheduler = Executors.newSingleThreadScheduledExecutor();
         tempScheduler.schedule(() -> {

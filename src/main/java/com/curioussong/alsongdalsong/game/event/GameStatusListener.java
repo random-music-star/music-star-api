@@ -2,12 +2,15 @@ package com.curioussong.alsongdalsong.game.event;
 
 import com.curioussong.alsongdalsong.common.sse.SseEmitterManager;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
+import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +27,7 @@ public class GameStatusListener {
     private final RoomRepository roomRepository;
     private final SseEmitterManager sseEmitterManager;
     private final RoomGameRepository roomGameRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @EventListener
     @Transactional
@@ -42,6 +46,10 @@ public class GameStatusListener {
         }
 
         sendRoomUpdateToClients(room);
+
+        for (Member member : room.getMembers()) {
+            eventPublisher.publishEvent(new MemberLocationEvent(room.getChannel().getId(), member));
+        }
     }
 
     private void sendRoomUpdateToClients(Room room) {
