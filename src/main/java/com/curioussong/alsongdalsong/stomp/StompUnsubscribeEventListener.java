@@ -2,7 +2,10 @@ package com.curioussong.alsongdalsong.stomp;
 
 import com.curioussong.alsongdalsong.channel.enums.ChannelEventType;
 import com.curioussong.alsongdalsong.channel.event.ChannelStatusChangedEvent;
+import com.curioussong.alsongdalsong.channel.event.ChannelUserUpdateEvent;
 import com.curioussong.alsongdalsong.game.service.GameService;
+import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
@@ -83,6 +86,11 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
             sessionManager.userLeaveChannel(channelId, userName);
             int playerCount = sessionManager.getChannelUserCount(channelId);
             applicationEventPublisher.publishEvent(new ChannelStatusChangedEvent(channelId, ChannelEventType.LEAVE, playerCount));
+
+            Member member = memberService.getMemberByToken(userName);
+            MemberStatusDTO memberStatus = MemberStatusDTO.from(member);
+
+            applicationEventPublisher.publishEvent(new ChannelUserUpdateEvent(channelId, memberStatus, ChannelEventType.LEAVE));
         }
     }
 

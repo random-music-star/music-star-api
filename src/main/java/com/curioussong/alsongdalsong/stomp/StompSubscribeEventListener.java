@@ -2,11 +2,14 @@ package com.curioussong.alsongdalsong.stomp;
 
 import com.curioussong.alsongdalsong.channel.enums.ChannelEventType;
 import com.curioussong.alsongdalsong.channel.event.ChannelStatusChangedEvent;
+import com.curioussong.alsongdalsong.channel.event.ChannelUserUpdateEvent;
 import com.curioussong.alsongdalsong.game.dto.test.TestResponse;
 import com.curioussong.alsongdalsong.game.dto.test.TestResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfoResponseDTO;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.service.GameService;
+import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
@@ -74,6 +77,11 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
             applicationEventPublisher.publishEvent(
                     new ChannelStatusChangedEvent(channelId, ChannelEventType.JOIN, playerCount));
+
+            Member member = memberService.getMemberByToken(userName);
+            MemberStatusDTO memberStatus = MemberStatusDTO.from(member);
+
+            applicationEventPublisher.publishEvent(new ChannelUserUpdateEvent(channelId, memberStatus, ChannelEventType.JOIN));
         }
 
         // 방 토픽 구독인 경우 (방 입장)
