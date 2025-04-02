@@ -89,18 +89,20 @@ public class Room {
         this.host = host;
         this.title = title;
         this.password = password;
-        this.maxPlayer = maxPlayer == null ? 10 : maxPlayer;
-        this.maxGameRound = maxGameRound == null ? 20 : maxGameRound;
-        this.format = format == null ? RoomFormat.GENERAL : format;
+        this.maxPlayer = maxPlayer;
+        this.maxGameRound = maxGameRound;
+        this.format = format;
         this.playTime = playTime == null ? 0 : playTime;
         this.status = status == null ? RoomStatus.WAITING : status;
         this.channel = channel;
     }
 
-    public void update(String title, String password, RoomFormat format){
+    public void update(String title, String password, RoomFormat format, Integer maxPlayer, Integer maxGameRound) {
         this.title = title;
         this.password = password;
         this.format = format;
+        this.maxPlayer = maxPlayer;
+        this.maxGameRound = maxGameRound;
     }
 
     public RoomDTO toDto(){

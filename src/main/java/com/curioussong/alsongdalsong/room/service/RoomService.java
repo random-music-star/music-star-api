@@ -52,6 +52,8 @@ public class RoomService {
     private final InGameManager inGameManager;
     private final GameMessageSender gameMessageSender;
 
+    private static final List<Integer> VALID_YEARS = List.of(1970, 1980, 1990, 2000, 2010, 2020, 2021, 2022, 2023, 2024);
+
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
         Channel channel = channelRepository.findById(request.getChannelId())
@@ -60,21 +62,8 @@ public class RoomService {
                         "존재하지 않는 채널입니다."
                 ));
 
-        if("BOARD".equals(request.getFormat())){
-            if(request.getMaxPlayer()>6 || request.getMaxPlayer()<2) {
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "보드판 맵의 최대 인원은 2~6명입니다."
-                );
-            }
-        } else if ("GENERAL".equals(request.getFormat())) {
-            if(request.getMaxPlayer()>60 || request.getMaxPlayer()<2){
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "점수판 맵의 최대 인원은 2~60명입니다. "
-                );
-            }
-        }
+        validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
+
         Room room = Room.builder()
                 .channel(channel)
                 .host(member)
@@ -92,22 +81,18 @@ public class RoomService {
         roomRepository.save(room);
 
         // GameMode 리스트를 기반으로 해당 Game 검색
-        List<Game> games = request.getGameModes().stream()
-                .map(gameMode -> gameRepository.findByMode(gameMode)
-                        .orElseThrow(()-> new HttpClientErrorException(
-                                HttpStatus.BAD_REQUEST,
-                                "해당하는 게임이 없습니다."
-                        )))
+        List<Game> games = getGamesFromModes(request.getGameModes());
+
+        List<RoomGame> roomGames = games.stream()
+                .map(game -> new RoomGame(game, room))
                 .toList();
+        roomGameRepository.saveAll(roomGames);
 
-        games.forEach(game -> roomGameRepository.save(new RoomGame(game, room)));
+        validateYears(request.getSelectedYears());
+        List<RoomYear> roomYears = createRoomYears(room, request.getSelectedYears());
+        roomYearRepository.saveAll(roomYears);
 
-        request.getSelectedYears().forEach(year ->
-                roomYearRepository.save(new RoomYear(room, year))
-        );
-
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.UPDATED));
-
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.CREATED));
         roomManager.addRoomInfo(room, request.getChannelId());
 
         return CreateResponse.builder()
@@ -199,34 +184,46 @@ public class RoomService {
     @Transactional
     public void updateRoom(Member member, UpdateRequest request) {
         Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+                .orElseThrow(() -> new HttpClientErrorException(
+                        HttpStatus.NOT_FOUND,
+                        "해당하는 방을 찾을 수 없습니다."
+                ));
 
         Member host = room.getHost();
         log.debug("hostId:{}", host.getId());
         log.debug("memberId:{}", member.getId());
         if (host.getId() != member.getId()) {
-            throw new IllegalArgumentException("방 설정은 방장만 변경 가능합니다.");
+            throw new HttpClientErrorException(
+                    HttpStatus.UNAUTHORIZED,
+                    "방 설정은 방장만 변경 가능합니다."
+            );
+        }
+
+        validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
+
+        if(room.getMembers().size() > request.getMaxPlayer()){
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "방의 인원 제한은 현재 인원이상이어야 합니다."
+            );
         }
 
         roomGameRepository.deleteAllByRoom(room);
-        List<Game> games = request.getGameModes().stream()
-                .map(gameMode -> gameRepository.findByMode(gameMode)
-                        .orElseThrow(()-> new EntityNotFoundException("해당하는 게임이 없습니다.")))
+        List<Game> games = getGamesFromModes(request.getGameModes());
+        List<RoomGame> roomGames = games.stream()
+                .map(game -> new RoomGame(game, room))
                 .toList();
+        roomGameRepository.saveAll(roomGames);
 
-        games.forEach(game -> roomGameRepository.save(new RoomGame(game, room)));
-
-        room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()));
+        room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()), request.getMaxPlayer(), request.getMaxGameRound());
 
         roomYearRepository.deleteAllByRoom(room);
         roomYearRepository.flush();
 
-        List<RoomYear> newRoomYears = request.getSelectedYears().stream()
-                .distinct()
-                .map(year -> new RoomYear(room, year))
-                .toList();
-
+        validateYears(request.getSelectedYears());
+        List<RoomYear> newRoomYears = createRoomYears(room, request.getSelectedYears());
         roomYearRepository.saveAll(newRoomYears);
+
 
         roomManager.updateRoomInfo(room, request.getSelectedYears());
 
@@ -277,7 +274,7 @@ public class RoomService {
         for (RoomGame roomGame : allRoomGames) {
             String roomId = roomGame.getRoom().getId();
             gameModesByRoomId.computeIfAbsent(roomId, k -> new ArrayList<>())
-                    .add(roomGame.getGame().getMode());  // getGameMode() -> getMode()
+                    .add(roomGame.getGame().getMode());
         }
 
         // 5. DTO 변환
@@ -340,5 +337,86 @@ public class RoomService {
     public Long generateRoomNumber(Long channelId) {
         Long maxRoomNumber = roomRepository.findMaxRoomNumberByChannelId(channelId);
         return (maxRoomNumber != null) ? maxRoomNumber + 1 : 1;
+    }
+
+
+    private void validateRoomSettings(String format, Integer maxPlayer, Integer maxGameRound, String password, String title){
+        if("BOARD".equals(format)){
+            if(maxPlayer>6 || maxPlayer<2) {
+                throw new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "보드판 맵의 최대 인원은 2~6명입니다."
+                );
+            }
+        } else if ("GENERAL".equals(format)) {
+            if(maxPlayer>60 || maxPlayer<2){
+                throw new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "점수판 맵의 최대 인원은 2~60명입니다. "
+                );
+            }
+        }
+
+        if(!(maxGameRound == 10 || maxGameRound == 20 || maxGameRound == 30)){
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "게임 라운드는 10, 20, 30 중 하나여야 합니다."
+            );
+        }
+
+        if(password.length()>30){
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "방의 비밀번호는 30자 이하여야 합니다."
+            );
+        }
+
+        if(title.length() > 15){
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "방의 제목은 15 이내여야 합니다."
+            );
+        }
+    }
+
+    private List<Game> getGamesFromModes(List<GameMode> gameModes) {
+        if (gameModes == null || gameModes.isEmpty()) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "게임 모드를 하나 이상 선택해야 합니다."
+            );
+        }
+        return gameModes.stream()
+                .map(gameMode -> gameRepository.findByMode(gameMode)
+                        .orElseThrow(() -> new HttpClientErrorException(
+                                HttpStatus.BAD_REQUEST,
+                                "지원하지 않는 게임모드가 포함되어 있습니다."
+                        )))
+                .toList();
+    }
+
+    private List<RoomYear> createRoomYears(Room room, List<Integer> selectedYears) {
+        return selectedYears.stream()
+                .distinct()
+                .map(year -> new RoomYear(room, year))
+                .toList();
+    }
+
+    private void validateYears(List<Integer> years) {
+        if (years == null || years.isEmpty()) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "선택된 연도가 없습니다."
+            );
+        }
+
+        for (Integer year : years) {
+            if (year == null || !VALID_YEARS.contains(year)) {
+                throw new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "지원하지 않는 연도가 포함되어 있습니다"
+                );
+            }
+        }
     }
 }

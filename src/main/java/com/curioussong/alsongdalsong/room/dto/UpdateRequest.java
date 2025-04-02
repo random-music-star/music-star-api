@@ -13,6 +13,8 @@ public class UpdateRequest {
     private String title;
     private String format;
     private String password;
+    private Integer maxPlayer;
+    private Integer maxGameRound;
     private List<GameMode> gameModes;
     private List<Integer> selectedYears;
 }

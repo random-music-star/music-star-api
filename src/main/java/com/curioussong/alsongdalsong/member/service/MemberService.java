@@ -9,8 +9,10 @@ import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +41,10 @@ public class MemberService {
     }
 
     public  Member getMemberByToken(String token) {
-        return memberRepository.findByUsername(token).orElseThrow(() -> new EntityNotFoundException("해당 회원이 없습니다."));
+        return memberRepository.findByUsername(token).orElseThrow(() -> new HttpClientErrorException(
+                HttpStatus.NOT_FOUND,
+                "해당 회원이 없습니다."
+        ));
     }
 
     public Member getMemberById(Long memberId) {
