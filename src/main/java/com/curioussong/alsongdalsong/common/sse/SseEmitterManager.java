@@ -91,7 +91,6 @@ public class SseEmitterManager {
         return emitter;
     }
 
-    @Async
     public void sendToChannel(Long channelId, String eventName, Object data) {
         Set<String> subscribers = channelSubscribers.get(channelId);
         if (subscribers == null || subscribers.isEmpty()) return;
