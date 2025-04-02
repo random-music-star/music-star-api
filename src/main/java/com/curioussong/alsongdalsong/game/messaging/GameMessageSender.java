@@ -10,6 +10,7 @@ import com.curioussong.alsongdalsong.game.dto.chat.ChatResponse;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.gamestart.GameStartResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponse;
 import com.curioussong.alsongdalsong.game.dto.hint.HintResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.move.MoveResponse;
@@ -77,6 +78,10 @@ public class GameMessageSender {
                 .build());
 
         log.debug("sendRoundInfo 메시지 전송 완료 - round: {}", currentRound);
+    }
+
+    public void sendGameStart(String destination) {
+        messagingTemplate.convertAndSend(destination, new GameStartResponseDTO("gameStart"));
     }
 
     public void sendCountdown(String destination, int countdown) {
@@ -229,12 +234,16 @@ public class GameMessageSender {
         log.debug("Event end message sent");
     }
 
-    public void sendRefuseMessage(String destination, String userName) {
-        messagingTemplate.convertAndSend(destination, RefuseEnterResponseDTO.builder()
+    public void sendRefuseMessage(String userName) {
+        RefuseEnterResponse response = RefuseEnterResponse.builder()
+                .refusedUser(userName)
+                .build();
+
+        RefuseEnterResponseDTO responseDTO = RefuseEnterResponseDTO.builder()
                 .type("refuseEnter")
-                .response(RefuseEnterResponse.builder()
-                        .refusedUser(userName)
-                        .build())
-                .build());
+                .response(response)
+                .build();
+
+        messagingTemplate.convertAndSendToUser(userName, "/user/queue/error", responseDTO);
     }
 }

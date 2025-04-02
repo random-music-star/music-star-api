@@ -14,10 +14,8 @@ import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.service.RoomService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionSubscribeEvent;
@@ -91,11 +89,6 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
             log.debug("room id {}, It's work when subscribe the topic", roomId);
 
-            // 방이 가득 찼거나, 게임 진행 중이면 참가 불가
-            if (roomService.isRoomFull(roomId) || roomService.isRoomInProgress(roomId) || roomService.isRoomFinished(roomId)) {
-                gameMessageSender.sendRefuseMessage(destination, userName);
-                return;
-            }
             roomService.joinRoom(channelId, roomId, sessionId, userName);
             sessionManager.addSessionId(sessionId, channelId, roomId, userName);
         }

@@ -1,8 +1,7 @@
 package com.curioussong.alsongdalsong.game.domain;
 
-import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponse;
-import com.curioussong.alsongdalsong.game.dto.roominfo.RoomInfoResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
+import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
@@ -10,7 +9,6 @@ import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -27,8 +25,8 @@ public class RoomManager {
     private final Map<String, RoomInfo> roomMap = new ConcurrentHashMap<>();
 
     private final RoomYearRepository roomYearRepository;
-    private final SimpMessagingTemplate messagingTemplate;
     private final RoomGameRepository roomGameRepository;
+    private final GameMessageSender gameMessageSender;
 
     // 방 정보 반환
     public RoomInfo getRoomInfo(String roomId) {
@@ -116,29 +114,17 @@ public class RoomManager {
     }
 
     public void updateRoomInfo(Room room, List<Integer> updatedSelectedYears) {
-        String roomId = room.getId();
-        RoomInfo roomInfo = roomMap.get(roomId);
+        RoomInfo roomInfo = getRoomInfo(room.getId());
 
-        log.info("Updating RoomInfo for roomId: {}", roomId);
-        roomInfo.setSelectedYears(updatedSelectedYears);
+        List<Integer> selectedYears = roomInfo.getSelectedYears();
+        selectedYears.clear();
+        selectedYears.addAll(updatedSelectedYears);
 
-        String destination = String.format("/topic/channel/%d/room/%s", roomInfo.getChannelId(), roomId);
-        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomId);
+        List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(room.getId());
 
+        String destination = String.format("/topic/channel/%d/room/%s", roomInfo.getChannelId(), room.getId());
 
-        messagingTemplate.convertAndSend(destination, RoomInfoResponseDTO.builder()
-                .type("roomInfo")
-                .response(RoomInfoResponse.builder()
-                        .roomTitle(room.getTitle())
-                        .maxPlayer(room.getMaxPlayer())
-                        .maxGameRound(room.getMaxGameRound())
-                        .hasPassword(room.getPassword()!=null&&!room.getPassword().isEmpty())
-                        .format(room.getFormat())
-                        .status(room.getStatus())
-                        .mode(gameModes)
-                        .selectedYear(updatedSelectedYears)
-                        .build())
-                .build());
+        gameMessageSender.sendRoomInfo(destination, room, roomInfo.getSelectedYears(), gameModes);
     }
 
     public int getMaxGameRound(String roomId) {
