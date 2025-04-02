@@ -60,11 +60,28 @@ public class RoomService {
                         "존재하지 않는 채널입니다."
                 ));
 
+        if("BOARD".equals(request.getFormat())){
+            if(request.getMaxPlayer()>6 || request.getMaxPlayer()<2) {
+                throw new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "보드판 맵의 최대 인원은 2~6명입니다."
+                );
+            }
+        } else if ("GENERAL".equals(request.getFormat())) {
+            if(request.getMaxPlayer()>60 || request.getMaxPlayer()<2){
+                throw new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "점수판 맵의 최대 인원은 2~60명입니다. "
+                );
+            }
+        }
         Room room = Room.builder()
                 .channel(channel)
                 .host(member)
                 .title(request.getTitle())
                 .password(request.getPassword())
+                .maxPlayer(request.getMaxPlayer())
+                .maxGameRound(request.getMaxGameRound())
                 .format(Room.RoomFormat.valueOf(request.getFormat()))
                 .build();
 

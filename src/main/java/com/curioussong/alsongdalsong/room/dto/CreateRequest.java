@@ -14,6 +14,8 @@ public class CreateRequest {
     private String title;
     private String password;
     private String format;
+    private Integer maxPlayer;
+    private Integer maxGameRound;
     private List<GameMode> gameModes;
     private List<Integer> selectedYears;
 }
