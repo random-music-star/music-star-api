@@ -103,7 +103,7 @@ public class GameService {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
         log.debug("Starting game in room {}", roomId);
-        if (!roomManager.areAllPlayersReady(roomId)) {
+        if (room.getFormat() == Room.RoomFormat.BOARD && !roomManager.areAllPlayersReady(roomId)) {
             log.debug("Not all players are ready in room {}. Cancelling game start.", roomId);
             return;
         }
