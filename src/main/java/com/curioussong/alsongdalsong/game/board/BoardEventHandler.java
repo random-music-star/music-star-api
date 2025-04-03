@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -24,16 +25,17 @@ public class BoardEventHandler {
         boolean isSoloPlay = (playerCount == 1);
 
         BoardEventType eventType;
+        String target = null;
 
-        if(isSoloPlay){
+        if (isSoloPlay) {
             eventType = BoardEventType.getRandomSoloEventType();
         } else {
-            eventType = BoardEventType.getRandomEventType();
+            eventType = (target = findTieUser(trigger, roomId)) != null ? BoardEventType.OVERLAP
+                    : BoardEventType.getRandomEventType();
         }
 
         log.debug("Generating event  trigger {}", trigger);
 
-        String target = null;
 
         if (eventType == BoardEventType.PULL) {
             target = findPullEventTarget(roomId, trigger);
@@ -165,6 +167,8 @@ public class BoardEventHandler {
 
                 case MAGNET -> handleMagnetEvent(destination, roomId, trigger, target);
 
+                case OVERLAP -> handleOverlapEvent(destination, roomId, trigger, target);
+
                 case NOTHING -> log.info("No effect for user {}", trigger);
                 default -> log.info("Case default, No effect for user {}", trigger);
             }
@@ -265,5 +269,29 @@ public class BoardEventHandler {
                 .min(Comparator.comparingInt(entry -> Math.abs(entry.getValue() - triggerPosition)))
                 .map(Map.Entry::getKey)
                 .orElse(null);
+    }
+
+    private String findTieUser(String trigger, String roomId) {
+        Map<String, Integer> userScores = inGameManager.getScore(roomId);
+        int currentWinnerScore = userScores.get(trigger);
+
+        List<String> tieUsers = userScores.entrySet().stream()
+                .filter(entry -> (entry.getValue() == currentWinnerScore) && !entry.getKey().equals(trigger))
+                .map(Map.Entry::getKey)
+                .toList();
+
+        return tieUsers.isEmpty() ? null
+                : tieUsers.size() == 1 ? tieUsers.get(0)
+                : pickRandomTieUser(tieUsers);
+    }
+
+    private String pickRandomTieUser(List<String> tieUsers) {
+        SecureRandom random = new SecureRandom();
+        return tieUsers.get(random.nextInt(tieUsers.size()));
+    }
+
+    private void handleOverlapEvent(String destination, String roomId, String trigger, String target) {
+        int triggerPreviousPosition = inGameManager.getUserMovement(roomId).get(trigger);
+        updatePositionAndSendMessage(destination, roomId, target, triggerPreviousPosition);
     }
 }

@@ -19,7 +19,8 @@ public enum BoardEventType {
     CLOVER(10, false, true),
     SWAP(15, true, false),
     WARP(15, false, true),
-    MAGNET(10, true, false),;
+    MAGNET(10, true, false),
+    OVERLAP(0, true, false);
 
     private final int probability;
     private final boolean hasTarget;
@@ -49,6 +50,10 @@ public enum BoardEventType {
     }
 
     private static BoardEventType getRandomEventTypeWithProbability(BoardEventType[] eventTypes, int maxProbability) {
+        if (maxProbability <= 0) {
+            return BoardEventType.NOTHING;
+        }
+
         int randomValue = ThreadLocalRandom.current().nextInt(maxProbability);
 
         int accumulatedProbability = 0;

@@ -62,7 +62,8 @@ public class BoardGameService {
     }
 
     private boolean isGameEnd(Room room, int currentRound) {
-        return currentRound == roomManager.getMaxGameRound(room.getId()) + 1;
+        return currentRound == roomManager.getMaxGameRound(room.getId()) + 1
+                || inGameManager.getScore(room.getId()).values().stream().anyMatch(score -> score >= 19);
     }
 
     private void initializeRound(Room room) {
@@ -133,11 +134,11 @@ public class BoardGameService {
     private void handleSendingPositionMessage(String destination, String roomId, String currentRoundWinner) {
         Map<String, Integer> userMovement = inGameManager.getUserMovement(roomId);
         Map<String, Integer> userScores = inGameManager.getScore(roomId);
+
         try {
             gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
             Thread.sleep(700);
-            while (userMovement.get(currentRoundWinner) > 0) {
-                userMovement.put(currentRoundWinner, userMovement.get(currentRoundWinner) - 1);
+            for (int movement = 1;movement <= userMovement.get(currentRoundWinner);movement++) {
                 userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
                 gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
 
@@ -148,11 +149,11 @@ public class BoardGameService {
                 Thread.sleep(700);
             }
 
-            int playerCount = userScores.size();
-
             // 이벤트 생성 및 처리
+            int playerCount = userScores.size();
             BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(currentRoundWinner, playerCount, roomId);
             boardEventHandler.handleEvent(destination, roomId, eventResponse);
+
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
