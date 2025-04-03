@@ -51,8 +51,8 @@ public class GameTimerManager {
         }).start();
     }
 
-    public void handleRoundStart(String destination, int currentRound, GameMode gameMode,Song currentRoundSong, String roomId, Runnable roundStartComplete) {
-        gameMessageSender.sendRoundInfo(destination, currentRound, gameMode, currentRoundSong);
+    public void handleRoundStart(String destination, int currentRound, GameMode gameMode,Song currentRoundFirstSong, Song currentRoundSecondSong, String roomId, Runnable roundStartComplete) {
+        gameMessageSender.sendRoundInfo(destination, currentRound, gameMode, currentRoundFirstSong, currentRoundSecondSong);
         // 2.5초 후 roundInfo 전달
         roomRoundTimerSchedulers.get(roomId).schedule(
                 () -> gameMessageSender.sendRoundOpen(destination),
@@ -102,15 +102,27 @@ public class GameTimerManager {
     }
 
     private void sendConsonantHint(String destination, String roomId) {
-        Song song = inGameManager.getCurrentRoundSong(roomId);
-        String consonants = KoreanConsonantExtractor.extractConsonants(song.getKorTitle());
-        gameMessageSender.sendHint(destination, consonants, null);
+        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
+        String firstSongConsonants = KoreanConsonantExtractor.extractConsonants(firstSong.getKorTitle());
+        if(inGameManager.hasSecondSongInCurrentRound(roomId)) {
+            Song secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
+            String secondSongConsonants = KoreanConsonantExtractor.extractConsonants(secondSong.getKorTitle());
+            gameMessageSender.sendHint(destination, firstSongConsonants, null, secondSongConsonants, null);
+        } else{
+            gameMessageSender.sendHint(destination, firstSongConsonants, null, null, null);
+        }
     }
 
     private void sendSingerHint(String destination, String roomId) {
-        Song song = inGameManager.getCurrentRoundSong(roomId);
-        String consonants = KoreanConsonantExtractor.extractConsonants(song.getKorTitle());
-        gameMessageSender.sendHint(destination, consonants, song.getArtist());
+        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
+        String firstSongConsonants = KoreanConsonantExtractor.extractConsonants(firstSong.getKorTitle());
+        if(inGameManager.hasSecondSongInCurrentRound(roomId)) {
+            Song secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
+            String secondSongConsonants = KoreanConsonantExtractor.extractConsonants(secondSong.getKorTitle());
+            gameMessageSender.sendHint(destination, firstSongConsonants, firstSong.getArtist(), secondSongConsonants, secondSong.getArtist());
+        } else{
+            gameMessageSender.sendHint(destination, firstSongConsonants, firstSong.getArtist(), null, null);
+        }
     }
 
     public void cancelHintTimers(String roomId) {

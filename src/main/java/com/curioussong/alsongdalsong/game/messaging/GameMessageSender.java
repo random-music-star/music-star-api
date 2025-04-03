@@ -65,7 +65,7 @@ public class GameMessageSender {
         messagingTemplate.convertAndSend(destination, chatResponseDTO);
     }
 
-    public void sendRoundInfo(String destination, int currentRound, GameMode gameMode, Song currentRoundSong) {
+    public void sendRoundInfo(String destination, int currentRound, GameMode gameMode, Song currentRoundFirstSong, Song currentRoundSecondSong) {
         log.debug("sendRoundInfo 호출됨 - destination: {}, round: {}", destination, currentRound);
 
         messagingTemplate.convertAndSend(destination, RoundResponseDTO.builder()
@@ -73,7 +73,8 @@ public class GameMessageSender {
                 .response(RoundResponse.builder()
                         .mode(gameMode)
                         .round(currentRound)
-                        .songUrl(currentRoundSong.getUrl())
+                        .songUrl(currentRoundFirstSong.getUrl())
+                        .songUrl2(currentRoundSecondSong != null ? currentRoundSecondSong.getUrl() : null)
                         .build())
                 .build());
 
@@ -111,10 +112,10 @@ public class GameMessageSender {
         messagingTemplate.convertAndSend(destination, roundStartResponseDTO);
     }
 
-    public void sendHint(String destination, String title, String singer) {
-        HintResponse.HintResponseBuilder builder = HintResponse.builder().title(title);
+    public void sendHint(String destination, String title, String singer, String title2, String singer2) {
+        HintResponse.HintResponseBuilder builder = HintResponse.builder().title(title).title2(title2);
         if (singer != null) {
-            builder.singer(singer);
+            builder.singer(singer).singer2(singer2);
         }
 
         messagingTemplate.convertAndSend(destination, HintResponseDTO.builder()
@@ -123,9 +124,9 @@ public class GameMessageSender {
                 .build());
     }
 
-    public void sendGameResult(String destination, String userName, Song song) {
-        String koreanTitle = song.getKorTitle();
-        String englishTitle = song.getEngTitle();
+    public void sendGameResult(String destination, String userName, Song firstSong, Song secondSong) {
+        String koreanTitle = firstSong.getKorTitle();
+        String englishTitle = firstSong.getEngTitle();
         StringBuilder title = new StringBuilder();
         if (englishTitle.isBlank()) {
             title.append(koreanTitle);
@@ -134,15 +135,27 @@ public class GameMessageSender {
                 title.append(englishTitle);
             }
         }
+        ResultResponse resultResponse = ResultResponse.builder()
+                .winner(userName)
+                .songTitle(title.toString())
+                .singer(firstSong.getArtist())
+                .score(1)
+                .build();
 
+        if(secondSong != null){
+            String koreanTitle2 = secondSong.getKorTitle();
+            String englishTitle2 = secondSong.getEngTitle();
+            StringBuilder title2 = new StringBuilder();
+            if(englishTitle2.isBlank()){
+                title2.append(koreanTitle2);
+            } else if(englishTitle2.matches(".*[a-zA-Z].*")) {
+                title2.append(englishTitle2);
+            }
+            resultResponse.assignSecondSong(title2.toString(), secondSong.getArtist());
+        }
         messagingTemplate.convertAndSend(destination, ResultResponseDTO.builder()
                 .type("gameResult")
-                .response(ResultResponse.builder()
-                        .winner(userName)
-                        .songTitle(title.toString())
-                        .singer(song.getArtist())
-                        .score(1)
-                        .build())
+                .response(resultResponse)
                 .build());
     }
 

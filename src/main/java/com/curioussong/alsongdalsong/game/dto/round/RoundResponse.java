@@ -12,4 +12,5 @@ public class RoundResponse {
     private GameMode mode;
     private Integer round;
     private String songUrl;
+    private String songUrl2;
 }

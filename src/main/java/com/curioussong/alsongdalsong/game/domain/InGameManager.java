@@ -57,15 +57,26 @@ public class InGameManager {
 
     private void initializeSongs(InGameInfo inGameInfo, Room room) {
         RoomInfo roomInfo = roomManager.getRoomInfo(room.getId());
-        List<Song> selectedSongs = songService.getRandomSongByYear(roomInfo.getSelectedYears(), room.getMaxGameRound());
-        List<TtsSong> selectedTtsSongs = ttsSongRepository.findRandomTtsSongsByYears(roomInfo.getSelectedYears(), room.getMaxGameRound());
         List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(room.getId());
 
+        int maxSongCount = room.getMaxGameRound()*2;
+        List<Song> selectedSongs = songService.getRandomSongByYear(roomInfo.getSelectedYears(), maxSongCount);
+        List<TtsSong> selectedTtsSongs = ttsSongRepository.findRandomTtsSongsByYears(roomInfo.getSelectedYears(), maxSongCount);
+
+        int songIndex = 0;
         for (int round = 1; round <= room.getMaxGameRound(); round++) {
             GameMode gameMode = getRandomGameMode(gameModes);
-            Song selectedSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, round - 1);
 
-            inGameInfo.getRoundInfo().put(round, Pair.of(gameMode, selectedSong));
+            if(gameMode == GameMode.DUAL){
+                Song firstSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, songIndex++);
+                Song secondSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, songIndex++);
+
+                inGameInfo.getRoundInfo().put(round, SongPair.createDual(gameMode, firstSong, secondSong));
+            } else {
+                Song selectedSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, songIndex++);
+
+                inGameInfo.getRoundInfo().put(round, SongPair.createSingle(gameMode, selectedSong));
+            }
         }
     }
 
@@ -120,7 +131,30 @@ public class InGameManager {
     public Song getCurrentRoundSong(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         int currentRound = inGameInfo.getCurrentRound();
-        return inGameInfo.getRoundInfo().get(currentRound).getSecond();
+        return inGameInfo.getRoundInfo().get(currentRound).getFirstSong();
+    }
+
+    public Song getSecondSongForCurrentRound(String roomId) {
+        InGameInfo inGameInfo = getInGameInfo(roomId);
+        int currentRound = inGameInfo.getCurrentRound();
+        SongPair songPair = inGameInfo.getRoundInfo().get(currentRound);
+
+        if(songPair.hasSecondSong()){
+            return songPair.getSecondSong();
+        }
+        return null;
+    }
+
+    public boolean hasSecondSongInCurrentRound(String roomId) {
+        InGameInfo inGameInfo = getInGameInfo(roomId);
+        int currentRound = inGameInfo.getCurrentRound();
+        return inGameInfo.getRoundInfo().get(currentRound).hasSecondSong();
+    }
+
+    public GameMode getCurrentRoundGameMode(String roomId) {
+        InGameInfo inGameInfo = getInGameInfo(roomId);
+        int currentRound = inGameInfo.getCurrentRound();
+        return inGameInfo.getRoundInfo().get(currentRound).getGameMode();
     }
 
     public boolean isSkipped(String roomId, Long memberId) {
@@ -179,7 +213,7 @@ public class InGameManager {
         return inGameInfo.getUserMovement();
     }
 
-    public Map<Integer, Pair<GameMode, Song>> getRoundInfo(String roomId) {
+    public Map<Integer, SongPair> getRoundInfo(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.getRoundInfo();
     }

@@ -10,4 +10,6 @@ import lombok.Setter;
 public class HintResponse {
     private String title;
     private String singer;
+    private String title2;
+    private String singer2;
 }

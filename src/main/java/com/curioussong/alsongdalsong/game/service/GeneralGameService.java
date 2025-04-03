@@ -61,14 +61,25 @@ public class GeneralGameService {
 
     public void handleRoundStart(String destination, Long channelId, Room room) {
         int currentRound = inGameManager.getCurrentRound(room.getId());
-        GameMode gameMode = inGameManager.getRoundInfo(room.getId()).get(currentRound).getFirst();
-        Song currentRoundSong = inGameManager.getRoundInfo(room.getId()).get(currentRound).getSecond();
-        gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, room.getId(), () -> {
+        GameMode gameMode = inGameManager.getCurrentRoundGameMode(room.getId());
+        Song currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
+
+        int songPlayTime = currentRoundSong.getPlayTime();
+
+        Song secondSong = null;
+        if (inGameManager.hasSecondSongInCurrentRound(room.getId())) {
+            secondSong = inGameManager.getSecondSongForCurrentRound(room.getId());
+            songPlayTime = Math.min(songPlayTime, secondSong.getPlayTime());
+        }
+
+        int finalSongPlayTime = songPlayTime;
+        gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, secondSong, room.getId(), () -> {
             // 카운트다운 완료 후 실행될 코드
             inGameManager.resetAnswered(room.getId());
+
             gameTimerManager.scheduleSongPlayTime(
                     destination,
-                    inGameManager.getCurrentRoundSong(room.getId()).getPlayTime(),
+                    finalSongPlayTime,
                     room.getId(),
                     () -> triggerEndEvent(destination, channelId, room)
             );
@@ -194,8 +205,23 @@ public class GeneralGameService {
             return false;
         }
         String userAnswer = chatRequestDTO.getRequest().getMessage();
-        Song song = inGameManager.getCurrentRoundSong(roomId);
-        return SongAnswerValidator.isCorrectAnswer(userAnswer, song.getKorTitle(), song.getEngTitle());
+        GameMode gameMode = inGameManager.getCurrentRoundGameMode(roomId);
+
+        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
+        Song secondSong = inGameManager.hasSecondSongInCurrentRound(roomId)
+                ? inGameManager.getSecondSongForCurrentRound(roomId)
+                : null;
+
+        log.info("current song: {}, second song: {}", firstSong.getKorTitle(), secondSong!=null?secondSong.getKorTitle():"");
+
+        return SongAnswerValidator.isCorrectAnswer(
+                userAnswer,
+                gameMode,
+                firstSong.getKorTitle(),
+                firstSong.getEngTitle(),
+                secondSong != null ? secondSong.getKorTitle() : "",
+                secondSong != null ? secondSong.getEngTitle() : ""
+        );
     }
 
     public void handleAnswer(String userName, Long channelId, String roomId) {
@@ -221,7 +247,11 @@ public class GeneralGameService {
     }
 
     private void sendGameResult(String destination, String roomId, String userName) {
-        Song song = inGameManager.getCurrentRoundSong(roomId);
-        gameMessageSender.sendGameResult(destination, userName, song);
+        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
+        Song secondSong = null;
+        if (inGameManager.hasSecondSongInCurrentRound(roomId)) {
+            secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
+        }
+        gameMessageSender.sendGameResult(destination, userName, firstSong, secondSong);
     }
 }

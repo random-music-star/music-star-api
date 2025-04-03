@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.game.util;
 
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
@@ -59,51 +60,82 @@ public class SongAnswerValidator {
         return text.replaceAll("[.=,'\"-]", "");
     }
 
-    public static boolean isCorrectAnswer(String userAnswer, String koreanTitle, String englishTitle) {
-        String processedUserAnswer = extractAnswer(userAnswer);
-
-        List<String> correctAnswers = new ArrayList<>();
-
-        // 원본 제목 추가
-        correctAnswers.add(koreanTitle);
-
-        // 공백 제거, 대문자 치환
-        String preprocessedKoreanAnswer = extractAnswer(koreanTitle);
-        correctAnswers.add(preprocessedKoreanAnswer);
-
-        // 괄호 및 괄호 안의 내용 제거
-        String removeParenthesesKoreanTitle = preprocessedKoreanAnswer.replaceAll("\\(.*?\\)", "");
-        correctAnswers.add(removeParenthesesKoreanTitle);
-
-        // 숫자를 발음하여 변환
-        String substituteNumberKoreanTitle = convertNumbersToKorean(removeParenthesesKoreanTitle);
-        correctAnswers.add(substituteNumberKoreanTitle);
-
-        // 특수 문자 발음하여 변환
-        String substituteSpecialKoreanTitle = convertSpecialCharactersToKorean(substituteNumberKoreanTitle);
-        correctAnswers.add(substituteSpecialKoreanTitle);
-
-        // 온점, 반점, 따옴표, 쌍따옴표 제거
-        String removeSomeSpecialCharacterKoreanTitle = removeSomeSpecialCharacters(removeParenthesesKoreanTitle);
-        correctAnswers.add(removeSomeSpecialCharacterKoreanTitle);
-
-        if (!englishTitle.isBlank()) {
-            correctAnswers.add(englishTitle);
-            String preprocessedEnglishAnswer = extractAnswer(englishTitle);
-            correctAnswers.add(preprocessedEnglishAnswer);
-            String removeParenthesesEnglishTitle = preprocessedEnglishAnswer.replaceAll("\\(.*?\\)", "");
-            correctAnswers.add(removeParenthesesEnglishTitle);
-            String substituteNumberEnglishTitle = convertNumbersToEnglish(removeParenthesesEnglishTitle);
-            correctAnswers.add(substituteNumberEnglishTitle);
-            String substituteSpecialEnglishTitle = convertSpecialCharactersToEnglish(substituteNumberEnglishTitle);
-            correctAnswers.add(substituteSpecialEnglishTitle);
-            String removeSomeSpecialCharacterEnglishTitle = removeSomeSpecialCharacters(removeParenthesesEnglishTitle);
-            correctAnswers.add(removeSomeSpecialCharacterEnglishTitle);
-        }
+    private static boolean isCorrectAnswer(String processedUserAnswer, String koreanTitle, String englishTitle) {
+        List<String> correctAnswers = getAllValidAnswers(koreanTitle, englishTitle);
 
         log.debug("사용자가 입력한 정답 : {}", processedUserAnswer);
         log.debug("정답 목록 : {}", correctAnswers);
+
         return correctAnswers.contains(processedUserAnswer);
     }
 
+    public static boolean isCorrectAnswer(String userAnswer,
+                                          GameMode gameMode,
+                                          String korTitleFirst, String engTitleFirst,
+                                          String korTitleSecond, String engTitleSecond) {
+        String processedUserAnswer = extractAnswer(userAnswer);
+
+        if (gameMode == GameMode.DUAL) {
+            List<String> validAnswers1 = getAllValidAnswers(korTitleFirst, engTitleFirst);
+            List<String> validAnswers2 = getAllValidAnswers(korTitleSecond, engTitleSecond);
+
+            for (String ans1 : validAnswers1) {
+                for (String ans2 : validAnswers2) {
+                    if (processedUserAnswer.equals(ans1 + ans2) || processedUserAnswer.equals(ans2 + ans1)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
+        return isCorrectAnswer(processedUserAnswer, korTitleFirst, engTitleFirst);
+    }
+
+    private static List<String> getAllValidAnswers(String koreanTitle, String englishTitle) {
+        List<String> validAnswers = new ArrayList<>();
+
+        if (!koreanTitle.isBlank()) {
+            // 원본 제목 추가
+            validAnswers.add(koreanTitle);
+
+            // 공백 제거, 대문자 치환
+            String preprocessedKoreanAnswer = extractAnswer(koreanTitle);
+            validAnswers.add(preprocessedKoreanAnswer);
+
+            // 괄호 및 괄호 안의 내용 제거
+            String removeParenthesesKoreanTitle = preprocessedKoreanAnswer.replaceAll("\\(.*?\\)", "");
+            validAnswers.add(removeParenthesesKoreanTitle);
+
+            // 숫자를 발음하여 변환
+            String substituteNumberKoreanTitle = convertNumbersToKorean(removeParenthesesKoreanTitle);
+            validAnswers.add(substituteNumberKoreanTitle);
+
+            // 특수 문자 발음하여 변환
+            String substituteSpecialKoreanTitle = convertSpecialCharactersToKorean(substituteNumberKoreanTitle);
+            validAnswers.add(substituteSpecialKoreanTitle);
+
+            // 온점, 반점, 따옴표, 쌍따옴표 제거
+            String removeSomeSpecialCharacterKoreanTitle = removeSomeSpecialCharacters(removeParenthesesKoreanTitle);
+            validAnswers.add(removeSomeSpecialCharacterKoreanTitle);
+        }
+
+        if (!englishTitle.isBlank()) {
+            validAnswers.add(englishTitle);
+            String preprocessedEnglishAnswer = extractAnswer(englishTitle);
+            validAnswers.add(preprocessedEnglishAnswer);
+            String removeParenthesesEnglishTitle = preprocessedEnglishAnswer.replaceAll("\\(.*?\\)", "");
+            validAnswers.add(removeParenthesesEnglishTitle);
+            String substituteNumberEnglishTitle = convertNumbersToEnglish(removeParenthesesEnglishTitle);
+            validAnswers.add(substituteNumberEnglishTitle);
+            String substituteSpecialEnglishTitle = convertSpecialCharactersToEnglish(substituteNumberEnglishTitle);
+            validAnswers.add(substituteSpecialEnglishTitle);
+            String removeSomeSpecialCharacterEnglishTitle = removeSomeSpecialCharacters(removeParenthesesEnglishTitle);
+            validAnswers.add(removeSomeSpecialCharacterEnglishTitle);
+        }
+
+        return validAnswers.stream()
+                .distinct()
+                .toList();
+    }
 }
