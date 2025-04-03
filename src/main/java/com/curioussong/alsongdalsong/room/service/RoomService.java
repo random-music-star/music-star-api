@@ -442,10 +442,10 @@ public class RoomService {
 
     @Transactional(readOnly = true)
     public SearchResultResponse searchRoomByTitle(Long channelId, String title) {
-        if(channelId == null){
+        if(channelId < 1 || channelId > 7) {
             throw new HttpClientErrorException(
                     HttpStatus.BAD_REQUEST,
-                    "채널 아이디는 필수값입니다."
+                    "존재하지 않는 채널입니다."
             );
         }
 
@@ -468,10 +468,10 @@ public class RoomService {
 
     @Transactional(readOnly = true)
     public SearchResultResponse searchRoomByNumber(Long channelId, Long number) {
-        if(channelId == null){
-            throw  new HttpClientErrorException(
+        if(channelId < 1 || channelId > 7) {
+            throw new HttpClientErrorException(
                     HttpStatus.BAD_REQUEST,
-                    "채널 아이디는 필수값입니다."
+                    "존재하지 않는 채널입니다."
             );
         }
 
