@@ -439,4 +439,56 @@ public class RoomService {
         eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.CREATED));
         roomManager.addRoomInfo(room, channelId);
     }
+
+    @Transactional(readOnly = true)
+    public SearchResultResponse searchRoomByTitle(Long channelId, String title) {
+        if(channelId == null){
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "채널 아이디는 필수값입니다."
+            );
+        }
+
+        List<Room> rooms = roomRepository.findByChannelIdAndTitleContainingAndStatusOrderByUpdatedAtDesc(channelId, title, Room.RoomStatus.WAITING);
+
+        List<SearchResultDTO> roomDtos = rooms.stream()
+                .map(room -> new SearchResultDTO(
+                        room.getFormat(),
+                        room.getId(),
+                        room.getRoomNumber(),
+                        room.getTitle(),
+                        room.getMembers().size(),
+                        room.getMaxPlayer(),
+                        !room.getPassword().isEmpty()
+                ))
+                .toList();
+        log.debug("roomDtos: {}", roomDtos);
+        return new SearchResultResponse(roomDtos);
+    }
+
+    @Transactional(readOnly = true)
+    public SearchResultResponse searchRoomByNumber(Long channelId, Long number) {
+        if(channelId == null){
+            throw  new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "채널 아이디는 필수값입니다."
+            );
+        }
+
+        Optional<Room> roomDto = roomRepository.findByChannelIdAndRoomNumberAndStatusOrderByUpdatedAtDesc(channelId, number, Room.RoomStatus.WAITING);
+
+        List<SearchResultDTO> response = roomDto.stream()
+                .map(room -> new SearchResultDTO(
+                        room.getFormat(),
+                        room.getId(),
+                        room.getRoomNumber(),
+                        room.getTitle(),
+                        room.getMembers().size(),
+                        room.getMaxPlayer(),
+                        !room.getPassword().isEmpty()
+                ))
+                .toList();
+
+        return new SearchResultResponse(response);
+    }
 }

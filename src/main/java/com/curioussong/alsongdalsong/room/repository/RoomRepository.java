@@ -19,4 +19,15 @@ public interface RoomRepository extends JpaRepository<Room, String> {
     );
     @Query("SELECT MAX(r.roomNumber) FROM Room r WHERE r.channel.id = :channelId")
     Long findMaxRoomNumberByChannelId(@Param("channelId") Long channelId);
+
+    List<Room> findByChannelIdAndTitleContainingAndStatusOrderByUpdatedAtDesc(
+            Long channelId,
+            String title,
+            Room.RoomStatus statuses);
+
+    Optional<Room> findByChannelIdAndRoomNumberAndStatusOrderByUpdatedAtDesc(
+            Long channelId,
+            Long roomNumber,
+            Room.RoomStatus statuses
+    );
 }
