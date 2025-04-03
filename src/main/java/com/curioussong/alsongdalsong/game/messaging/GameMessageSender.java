@@ -257,6 +257,6 @@ public class GameMessageSender {
                 .response(response)
                 .build();
 
-        messagingTemplate.convertAndSendToUser(userName, "/user/queue/error", responseDTO);
+        messagingTemplate.convertAndSendToUser(userName, "/queue/system", responseDTO);
     }
 }

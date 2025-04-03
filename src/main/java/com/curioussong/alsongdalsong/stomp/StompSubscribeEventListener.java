@@ -43,10 +43,6 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
         }
 
         String userName = getUsernameFromHeader(accessor);
-        if(userName == null) {
-            // Todo : 헤더로 사용자 이름을 전달받지 못한 경우에 대한 예외 처리
-            return;
-        }
         log.debug("username {}", userName);
 
         // 채널 토픽 구독 패턴 (예: /topic/channel/1)
@@ -85,6 +81,11 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
             log.debug("room id {}, It's work when subscribe the topic", roomId);
 
+            if (!isSubscribableRoom(roomId)) {
+                gameMessageSender.sendRefuseMessage(accessor.getUser().getName());
+                return;
+            }
+
             roomService.joinRoom(channelId, roomId, sessionId, userName);
             sessionManager.addSessionId(sessionId, channelId, roomId, userName);
         }
@@ -95,6 +96,10 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
             return accessor.getNativeHeader("Authorization").get(0);
         }
         return null;
+    }
+
+    private boolean isSubscribableRoom(String roomId) {
+        return !roomService.isRoomFinished(roomId) && !roomService.isRoomFull(roomId) && !roomService.isRoomInProgress(roomId);
     }
 
 }
