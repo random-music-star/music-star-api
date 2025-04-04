@@ -221,6 +221,7 @@ public class GameMessageSender {
                 .type("roomInfo")
                 .response(RoomInfoResponse.builder()
                         .roomTitle(room.getTitle())
+                        .roomNumber(room.getRoomNumber())
                         .maxPlayer(room.getMaxPlayer())
                         .maxGameRound(room.getMaxGameRound())
                         .hasPassword(room.getPassword() != null && !room.getPassword().isEmpty())
