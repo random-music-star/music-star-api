@@ -14,9 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Service
 @Slf4j
@@ -27,7 +25,9 @@ public class MemberService {
     private final ChannelRepository channelRepository;
 
     public String guestLogin() {
-        String token = "guest_" + UUID.randomUUID().toString().substring(0, 8);
+        Member lastGuestMember = memberRepository.findFirstByTypeOrderByIdDesc(Member.MemberType.GUEST);
+
+        String token = createGuestToken(lastGuestMember);
         log.info("사용자 임의 토큰 값 : {}", token);
 
         // 멤버 생성
@@ -38,6 +38,13 @@ public class MemberService {
 
         memberRepository.save(member);
         return token;
+    }
+
+    private String createGuestToken(Member lastGuestMember) {
+        if (lastGuestMember == null) {
+            return "guest_0";
+        }
+        return "guest_" + (Integer.parseInt(lastGuestMember.getUsername().replace("guest_", ""))+1);
     }
 
     public  Member getMemberByToken(String token) {

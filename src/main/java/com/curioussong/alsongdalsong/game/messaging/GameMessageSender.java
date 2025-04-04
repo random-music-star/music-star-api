@@ -8,6 +8,7 @@ import com.curioussong.alsongdalsong.game.dto.board.EventTriggerResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatResponse;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.dice.DiceResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponse;
 import com.curioussong.alsongdalsong.game.dto.gameend.GameEndResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.gamestart.GameStartResponseDTO;
@@ -157,6 +158,24 @@ public class GameMessageSender {
                 .type("gameResult")
                 .response(resultResponse)
                 .build());
+    }
+
+    public void sendDiceMessage(String destination) {
+        try {
+            DiceResponseDTO diceStartResponseDTO = DiceResponseDTO.builder()
+                    .type("diceStart")
+                    .build();
+            messagingTemplate.convertAndSend(destination, diceStartResponseDTO);
+            Thread.sleep(2000);
+
+            DiceResponseDTO diceEndResponseDTO = DiceResponseDTO.builder()
+                    .type("diceEnd")
+                    .build();
+            messagingTemplate.convertAndSend(destination, diceEndResponseDTO);
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public void sendSkipInfo(String destination, int skipCount) {

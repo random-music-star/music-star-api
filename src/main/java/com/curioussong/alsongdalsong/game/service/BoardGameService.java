@@ -118,6 +118,7 @@ public class BoardGameService {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+            gameMessageSender.sendDiceMessage(destination);
             handleSendingPositionMessage(destination, room.getId(), winner);
         } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
             sendGameResult(destination, room.getId(), winner);
