@@ -378,7 +378,7 @@ public class RoomService {
     }
 
     private void validateRoomHost(Room room, Member member) {
-        if (room.getHost().getId() != member.getId()) {
+        if (!room.getHost().getId().equals(member.getId())) {
             throw new HttpClientErrorException(
                     HttpStatus.UNAUTHORIZED,
                     "방 설정은 방장만 변경 가능합니다."
