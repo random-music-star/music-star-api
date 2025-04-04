@@ -291,7 +291,7 @@ public class BoardEventHandler {
     }
 
     private void handleOverlapEvent(String destination, String roomId, String trigger, String target) {
-        int triggerPreviousPosition = inGameManager.getUserMovement(roomId).get(trigger);
+        int triggerPreviousPosition = inGameManager.getScore(roomId).get(trigger) - inGameManager.getUserMovement(roomId).get(trigger);
         updatePositionAndSendMessage(destination, roomId, target, triggerPreviousPosition);
     }
 }
