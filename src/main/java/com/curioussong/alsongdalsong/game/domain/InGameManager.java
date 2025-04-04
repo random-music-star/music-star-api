@@ -61,7 +61,7 @@ public class InGameManager {
 
         int maxSongCount = room.getMaxGameRound()*2;
         List<Song> selectedSongs = songService.getRandomSongByYear(roomInfo.getSelectedYears(), maxSongCount);
-        List<TtsSong> selectedTtsSongs = ttsSongRepository.findRandomTtsSongsByYears(roomInfo.getSelectedYears(), maxSongCount);
+        List<TtsSong> selectedTtsSongs = ttsSongRepository.findRandomTtsSongsByYears(roomInfo.getSelectedYears(), room.getMaxGameRound());
 
         int songIndex = 0;
         for (int round = 1; round <= room.getMaxGameRound(); round++) {
