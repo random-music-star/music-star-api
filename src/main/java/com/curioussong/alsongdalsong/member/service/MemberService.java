@@ -53,7 +53,30 @@ public class MemberService {
 
     public void userSignup(String username, String password) {
         if (memberRepository.findByUsername(username).isPresent()) {
-            throw new IllegalArgumentException("이미 존재하는 회원입니다.");
+            throw new HttpClientErrorException(
+                    HttpStatus.CONFLICT,
+                    "이미 존재하는 회원입니다.");
+        }
+
+        if (username == null || username.isEmpty()) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "사용자 이름은 필수 항목입니다."
+            );
+        }
+
+        if (username.contains(" ")) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "사용자 이름에는 공백을 포함할 수 없습니다."
+            );
+        }
+
+        if (password == null || password.isEmpty()) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "비밀번호는 필수 항목입니다."
+            );
         }
 
         Member member = Member.builder()
@@ -67,11 +90,18 @@ public class MemberService {
 
     public UserLoginResponse userLogin(String username, String password) {
         Member member = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 회원입니다."));
+                .orElseThrow(() -> new HttpClientErrorException(
+                        HttpStatus.NOT_FOUND,
+                        "존재하지 않는 회원입니다."
+                ));
 
         if (!password.equals(member.getPassword())) {
-            throw new IllegalArgumentException("비밀번호가 틀렸습니다.");
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "비밀번호가 틀렸습니다."
+            );
         }
+
 
         return new UserLoginResponse(username);
     }
