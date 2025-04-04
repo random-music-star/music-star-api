@@ -79,6 +79,13 @@ public class MemberService {
             );
         }
 
+        if (!username.matches("^[a-zA-Z0-9]+$")) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "사용자 이름은 영어와 숫자만 포함할 수 있습니다."
+            );
+        }
+
         if (password == null || password.isEmpty()) {
             throw new HttpClientErrorException(
                     HttpStatus.BAD_REQUEST,
