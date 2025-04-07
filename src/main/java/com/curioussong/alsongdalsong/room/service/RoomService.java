@@ -240,7 +240,7 @@ public class RoomService {
 
     @Transactional(readOnly = true)
     public boolean canEnterRoom(String roomId) {
-        return !isRoomFinished(roomId) || !isRoomFull(roomId) || !isRoomInProgress(roomId);
+        return !isRoomFinished(roomId) && !isRoomFull(roomId) && !isRoomInProgress(roomId);
     }
 
     public boolean isRoomFull(String roomId) {
