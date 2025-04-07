@@ -7,9 +7,12 @@ import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
+import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
+import com.curioussong.alsongdalsong.gameround.event.GameRoundLogEvent;
+import com.curioussong.alsongdalsong.gamesession.event.GameSessionLogEvent;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.member.service.MemberService;
@@ -24,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -85,6 +89,18 @@ public class BoardGameService {
             songPlayTime = Math.min(songPlayTime, secondSong.getPlayTime());
         }
 
+        eventPublisher.publishEvent(new GameRoundLogEvent(
+                room,
+                GameRoundLogEvent.Type.START,
+                currentRound,
+                gameMode,
+                currentRoundSong,
+                secondSong,
+                LocalDateTime.now(),
+                null,
+                null
+        ));
+
         int finalSongPlayTime = songPlayTime;
         gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, secondSong, room.getId(), () -> {
             // 카운트다운 완료 후 실행될 코드
@@ -128,6 +144,19 @@ public class BoardGameService {
                 Thread.currentThread().interrupt();
             }
         }
+
+        eventPublisher.publishEvent(new GameRoundLogEvent(
+                room,
+                GameRoundLogEvent.Type.END,
+                inGameManager.getCurrentRound(room.getId()),
+                null,
+                null,
+                null,
+                LocalDateTime.now(),
+                isWinnerExist ? winner : null,
+                inGameManager.getSubmittedAnswer(room.getId())
+        ));
+        inGameManager.clearSubmittedAnswer(room.getId());
         inGameManager.nextRound(room.getId());
         startRound(channelId, room, destination);
     }
@@ -183,7 +212,7 @@ public class BoardGameService {
 
         log.info("current song: {}, second song: {}", firstSong.getKorTitle(), secondSong!=null?secondSong.getKorTitle():"");
 
-        return SongAnswerValidator.isCorrectAnswer(
+        boolean isCorrect = SongAnswerValidator.isCorrectAnswer(
                 userAnswer,
                 gameMode,
                 firstSong.getKorTitle(),
@@ -191,6 +220,12 @@ public class BoardGameService {
                 secondSong != null ? secondSong.getKorTitle() : "",
                 secondSong != null ? secondSong.getEngTitle() : ""
         );
+
+        if(isCorrect) {
+            inGameManager.setSubmittedAnswer(roomId, userAnswer);
+        }
+
+        return isCorrect;
 
     }
 
@@ -290,13 +325,12 @@ public class BoardGameService {
 
         // 게임 종료 시 WAITING 상태로 변경
         room.updateStatus(Room.RoomStatus.WAITING);
-
+        eventPublisher.publishEvent(new GameSessionLogEvent(room, GameSessionLogEvent.Type.END));
         roomRepository.save(room);
         Long channelId = room.getChannel().getId();
         for (Member member : room.getMembers()) {
             eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
         }
-
         ScheduledExecutorService tempScheduler = Executors.newSingleThreadScheduledExecutor();
         tempScheduler.schedule(() -> {
             gameMessageSender.sendRoomInfo(destination, room, roomManager.getSelectedYears(room.getId()), roomManager.getGameModes(room.getId()));

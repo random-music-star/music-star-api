@@ -12,7 +12,7 @@ import java.util.List;
 
 public interface RoomGameRepository extends JpaRepository<RoomGame, Long> {
 
-    RoomGame findByRoomId(String roomId);
+    List<RoomGame> findByRoomId(String roomId);
 
     @Query("SELECT rg.game.mode FROM RoomGame rg WHERE rg.room.id = :roomId")
     List<GameMode> findGameModesByRoomId(@Param("roomId") String roomId);

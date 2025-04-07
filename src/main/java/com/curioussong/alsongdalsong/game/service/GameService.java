@@ -6,6 +6,7 @@ import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
+import com.curioussong.alsongdalsong.gamesession.event.GameSessionLogEvent;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -109,6 +110,7 @@ public class GameService {
         }
         log.debug("All players are ready, proceeding to start the game.");
         eventPublisher.publishEvent(new GameStatusEvent(room, "IN_PROGRESS"));
+        eventPublisher.publishEvent(new GameSessionLogEvent(room, GameSessionLogEvent.Type.START));
 
         String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
         gameMessageSender.sendGameStart(destination);

@@ -15,4 +15,6 @@ public interface RoomYearRepository extends JpaRepository<RoomYear, Long> {
 
     @EntityGraph(attributePaths = {"room"})
     List<RoomYear> findByRoomIdIn(List<String> roomIds);
+
+    List<RoomYear> findByRoomId(String roomId);
 }

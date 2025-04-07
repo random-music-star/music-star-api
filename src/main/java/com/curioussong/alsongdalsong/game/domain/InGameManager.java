@@ -1,5 +1,7 @@
 package com.curioussong.alsongdalsong.game.domain;
 
+import com.curioussong.alsongdalsong.gamesession.domain.GameSession;
+import com.curioussong.alsongdalsong.gamesession.repository.GameSessionRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
@@ -8,7 +10,6 @@ import com.curioussong.alsongdalsong.song.service.SongService;
 import com.curioussong.alsongdalsong.ttssong.domain.TtsSong;
 import com.curioussong.alsongdalsong.ttssong.repository.TtsSongRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Component;
 
 import java.security.SecureRandom;
@@ -26,6 +27,9 @@ public class InGameManager {
     private final SongService songService;
     private final RoomManager roomManager;
     private final TtsSongRepository ttsSongRepository;
+    private final Map<String, Long> sessionIdMap = new ConcurrentHashMap<>();
+    private final GameSessionRepository gameSessionRepository;
+    private final Map<String, String> submittedAnswerMap = new ConcurrentHashMap<>();
 
     public void initializeGameSettings(Room room) {
         InGameInfo inGameInfo = new InGameInfo();
@@ -36,6 +40,13 @@ public class InGameManager {
         initializeUserMovement(inGameInfo, room); // 사용자 별 움직이는거리 초기화
         initializeSongs(inGameInfo, room); // 노래 세팅
         initializeSkipStatus(room); // 스킵 상태 초기화
+        initializeGameSessionId(room);
+    }
+
+    private void initializeGameSessionId(Room room) {
+        GameSession gameSession = gameSessionRepository.findTopByRoomIdOrderByStartTimeDesc(room.getId())
+                .orElseThrow(() -> new IllegalStateException("해당 room에 대한 game session을 찾을 수 없습니다."));
+        sessionIdMap.putIfAbsent(room.getId(), gameSession.getId());
     }
 
     private void initializeScores(InGameInfo inGameInfo, Room room) {
@@ -196,6 +207,7 @@ public class InGameManager {
 
     public void clear(String roomId) {
         inGameMap.remove(roomId);
+        sessionIdMap.remove(roomId);
     }
 
     public Map<String, Integer> getScore(String roomId) {
@@ -226,5 +238,21 @@ public class InGameManager {
     public boolean isAnswered(String roomId) {
         InGameInfo inGameInfo = getInGameInfo(roomId);
         return inGameInfo.isAnswered();
+    }
+
+    public Long getGameSessionId(String roomId) {
+        return sessionIdMap.get(roomId);
+    }
+
+    public void setSubmittedAnswer(String roomId, String answer) {
+        submittedAnswerMap.put(roomId, answer);
+    }
+
+    public String getSubmittedAnswer(String roomId) {
+        return submittedAnswerMap.get(roomId);
+    }
+
+    public void clearSubmittedAnswer(String id) {
+        submittedAnswerMap.remove(id);
     }
 }
