@@ -169,7 +169,7 @@ public class BoardGameService {
 
         try {
             gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
-            Thread.sleep(700);
+            Thread.sleep(500);
             for (int movement = 1;movement <= userMovement.get(currentRoundWinner);movement++) {
                 userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
                 gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
@@ -178,7 +178,7 @@ public class BoardGameService {
                     return;
                 }
 
-                Thread.sleep(700);
+                Thread.sleep(300);
             }
 
             // 이벤트 생성 및 처리

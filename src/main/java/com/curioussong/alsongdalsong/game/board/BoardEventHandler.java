@@ -71,7 +71,7 @@ public class BoardEventHandler {
             gameMessageSender.sendEventTrigger(destination, trigger);
 
             // 1초 대기
-            Thread.sleep(1500);
+            Thread.sleep(1000);
 
             // 2. 이벤트 메시지 전송
             gameMessageSender.sendBoardEventMessage(destination, eventResponseDTO);
@@ -87,12 +87,12 @@ public class BoardEventHandler {
             // 3. 이벤트 종료 메시지 전송
             gameMessageSender.sendEventEnd(destination);
 
-            Thread.sleep(1500);
+//            Thread.sleep(500);
 
             // 4. 이벤트 효과 적용 (move 메시지 전송 포함)
             applyEventEffect(destination, roomId, eventType, trigger, target);
 
-            Thread.sleep(1500);
+            Thread.sleep(1000);
 
         } catch (Exception e) {
             log.error("Error handling event: {}", e.getMessage(), e);
