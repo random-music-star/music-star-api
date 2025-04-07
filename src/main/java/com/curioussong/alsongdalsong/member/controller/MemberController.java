@@ -1,9 +1,6 @@
 package com.curioussong.alsongdalsong.member.controller;
 
-import com.curioussong.alsongdalsong.member.dto.GuestLogin;
-import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
-import com.curioussong.alsongdalsong.member.dto.UserLoginRequest;
-import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
+import com.curioussong.alsongdalsong.member.dto.*;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -47,5 +44,11 @@ public class MemberController {
     public ResponseEntity<List<MemberStatusDTO>> getChannelMembers(@PathVariable("channelId") Long channelId) {
         List<MemberStatusDTO> members = memberService.getChannelMembers(channelId);
         return ResponseEntity.ok(members);
+    }
+
+    @PatchMapping("/color")
+    public ResponseEntity<Void> changeCharacterColor(@RequestBody ColorChangeRequest colorChangeRequest) {
+        memberService.changeCharacterColor(colorChangeRequest.username(), colorChangeRequest.colorCode());
+        return ResponseEntity.ok().build();
     }
 }

@@ -39,6 +39,9 @@ public class Member {
     @JoinColumn(name = "current_channel_id")
     private Channel currentChannel;
 
+    @Column(name="color_code", nullable = false, length = 7)
+    private String colorCode;
+
     public void setRoom(Room room) {
         this.room = room;
     }
@@ -57,4 +60,6 @@ public class Member {
     public void leaveChannel() {
         this.currentChannel = null;
     }
+
+    public void updateColorCode(String colorCode) { this.colorCode = colorCode; }
 }

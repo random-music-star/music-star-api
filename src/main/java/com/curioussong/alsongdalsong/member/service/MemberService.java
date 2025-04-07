@@ -149,4 +149,21 @@ public class MemberService {
                 .map(MemberStatusDTO::from)
                 .toList();
     }
+
+    public void changeCharacterColor(String username, String colorCode) {
+        Member member = memberRepository.findByUsername(username)
+                .orElseThrow(() -> new HttpClientErrorException(
+                        HttpStatus.NOT_FOUND,
+                        "존재하지 않는 회원입니다."
+                ));
+
+        if (!colorCode.matches("^#[0-9A-Fa-f]{6}$")) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "유효하지 않은 색상 코드입니다.");
+        }
+
+        member.updateColorCode(colorCode);
+        memberRepository.save(member);
+    }
 }
