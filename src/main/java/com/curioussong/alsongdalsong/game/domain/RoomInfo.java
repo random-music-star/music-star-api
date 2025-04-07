@@ -21,6 +21,7 @@ public class RoomInfo {
     private final Map<BoardEventType, Pair<String, Integer>> interactionEventTarget;
     private List<GameMode> gameModes;
     private Map<String, String> authorizedUser;
+    private Map<String, Integer> userColorNumber;
 
     // memberId에 따른 ready상태
     private Map<Long, Boolean> memberReadyStatus;
@@ -33,7 +34,8 @@ public class RoomInfo {
         this.memberReadyStatus = new ConcurrentHashMap<>();
         this.interactionEventTarget = new ConcurrentHashMap<>();
         this.gameModes = new ArrayList<>();
-        this.authorizedUser = new HashMap<>();
+        this.authorizedUser = new ConcurrentHashMap<>();
+        this.userColorNumber = new ConcurrentHashMap<>();
     }
 
 }

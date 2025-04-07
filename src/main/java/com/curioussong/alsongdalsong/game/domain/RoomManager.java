@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +52,33 @@ public class RoomManager {
         roomInfo.setGameModes(findGameModesByRoom(room));
 
         roomMap.put(room.getId(), roomInfo);
+        log.info("room Info created");
+    }
+
+    public void addUserColorNumber(String roomId, String userName) {
+        Map<String, Integer> userColorNumber = roomMap.get(roomId).getUserColorNumber();
+        log.info("userColorNumber : {}", userColorNumber.size());
+        if (userColorNumber.isEmpty()) {
+            userColorNumber.put(userName, 1);
+        } else {
+            List<Integer> userColorNumberList = new ArrayList<>(userColorNumber.values());
+            for (int i = 1; i < 61; i++) {
+                if (!userColorNumberList.contains(i)) {
+                    userColorNumber.put(userName, i);
+                    break;
+                }
+            }
+        }
+    }
+
+    public void removeUserColorNumber(String roomId, String userName) {
+        Map<String, Integer> userColorNumber = roomMap.get(roomId).getUserColorNumber();
+        userColorNumber.remove(userName);
+    }
+
+    public Integer getUserColorNumber(String roomId, String userName) {
+        Map<String, Integer> userColorNumber = roomMap.get(roomId).getUserColorNumber();
+        return userColorNumber.get(userName);
     }
 
     public Map<String, String> getAuthorizedUser(String roomId) {
@@ -58,6 +86,9 @@ public class RoomManager {
     }
 
     public void authorizeUser(String roomId, String userName) {
+        log.info("room Map : {}", roomMap.get(roomId));
+        log.info("auth : {}", roomMap.get(roomId).getAuthorizedUser());
+
         roomMap.get(roomId).getAuthorizedUser().put(userName, roomId);
     }
 
@@ -151,8 +182,9 @@ public class RoomManager {
             boolean isHost = member.getId().equals(room.getHost().getId());
             boolean isReady = Boolean.TRUE.equals(getReady(room.getId(), member.getId()));
             String colorCode = member.getColorCode();
+            Integer colorNumber = getUserColorNumber(room.getId(), member.getUsername());
 
-            userInfoList.add(new UserInfo(member.getUsername(), isReady, isHost, colorCode));
+            userInfoList.add(new UserInfo(member.getUsername(), isReady, isHost, colorCode, colorNumber));
         }
 
         return userInfoList;

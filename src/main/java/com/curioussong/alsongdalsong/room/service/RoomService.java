@@ -71,6 +71,7 @@ public class RoomService {
         setupRoomYears(room, request.getSelectedYears());
         notifyRoomCreation(room, request.getChannelId());
         roomManager.authorizeUser(room.getId(), member.getUsername());
+        roomManager.addUserColorNumber(room.getId(), member.getUsername());
 
         return CreateResponse.builder()
                 .channelId(room.getChannel().getId())
@@ -113,6 +114,7 @@ public class RoomService {
         }
 
         roomManager.getReadyStatus(roomId).remove(member.getId());
+        roomManager.removeUserColorNumber(roomId, userName);
         if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
             inGameManager.removeSkipStatusWhoLeaved(roomId, member.getId());
         }
@@ -267,7 +269,8 @@ public class RoomService {
                     .build();
         }
 
-        roomManager.authorizeUser(userName, room.getId());
+        roomManager.authorizeUser(room.getId(), userName);
+        roomManager.addUserColorNumber(room.getId(), userName);
 
         return EnterRoomResponse.builder()
                 .roomId(request.getRoomId())

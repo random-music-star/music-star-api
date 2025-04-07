@@ -12,4 +12,5 @@ public class UserInfo {
     private Boolean isReady;
     private Boolean isHost;
     private String colorCode;
+    private Integer colorNumber;
 }

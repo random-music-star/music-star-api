@@ -143,7 +143,7 @@ public class BoardGameService {
                 userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
                 gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
 
-                if (userScores.get(currentRoundWinner) >= 19) { // 목표 지점 도달 시
+                if (userScores.get(currentRoundWinner) >= 20) { // 목표 지점 도달 시
                     return;
                 }
 
