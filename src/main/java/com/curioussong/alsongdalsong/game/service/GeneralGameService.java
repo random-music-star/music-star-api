@@ -43,7 +43,7 @@ public class GeneralGameService {
         log.info("Round : {} 진행중입니다.", currentRound);
 
         // 마지막 라운드 종료 시 게임 종료
-        if (currentRound == roomManager.getMaxGameRound(room.getId())) {
+        if (currentRound == roomManager.getMaxGameRound(room.getId())+1) {
             endGame(room, destination);
             return;
         }
