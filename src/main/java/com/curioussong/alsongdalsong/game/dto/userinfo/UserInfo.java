@@ -11,4 +11,5 @@ public class UserInfo {
     private String userName;
     private Boolean isReady;
     private Boolean isHost;
+    private String colorCode;
 }

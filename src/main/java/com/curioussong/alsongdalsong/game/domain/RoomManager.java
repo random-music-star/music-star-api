@@ -150,8 +150,9 @@ public class RoomManager {
         for (Member member : room.getMembers()) {
             boolean isHost = member.getId().equals(room.getHost().getId());
             boolean isReady = Boolean.TRUE.equals(getReady(room.getId(), member.getId()));
+            String colorCode = member.getColorCode();
 
-            userInfoList.add(new UserInfo(member.getUsername(), isReady, isHost));
+            userInfoList.add(new UserInfo(member.getUsername(), isReady, isHost, colorCode));
         }
 
         return userInfoList;
