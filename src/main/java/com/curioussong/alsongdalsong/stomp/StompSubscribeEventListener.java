@@ -81,10 +81,18 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
 
             log.debug("room id {}, It's work when subscribe the topic", roomId);
 
-            if (!isSubscribableRoom(roomId)) {
+            if (!roomService.canEnterRoom(roomId)) {
                 gameMessageSender.sendRefuseMessage(accessor.getUser().getName());
                 return;
             }
+
+            // 비밀번호가 걸린 방에 정상적으로 입장하지 않은 경우
+            if (roomService.hasPassword(roomId) && !roomService.isAuthorizedUser(roomId, userName)) {
+                gameMessageSender.sendRefuseMessage(accessor.getUser().getName());
+                return;
+            }
+
+
 
             roomService.joinRoom(channelId, roomId, sessionId, userName);
             sessionManager.addSessionId(sessionId, channelId, roomId, userName);
@@ -96,10 +104,6 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
             return accessor.getNativeHeader("Authorization").get(0);
         }
         return null;
-    }
-
-    private boolean isSubscribableRoom(String roomId) {
-        return !roomService.isRoomFinished(roomId) && !roomService.isRoomFull(roomId) && !roomService.isRoomInProgress(roomId);
     }
 
 }

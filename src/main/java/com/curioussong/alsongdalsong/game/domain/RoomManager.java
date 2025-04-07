@@ -53,6 +53,18 @@ public class RoomManager {
         roomMap.put(room.getId(), roomInfo);
     }
 
+    public Map<String, String> getAuthorizedUser(String roomId) {
+        return roomMap.get(roomId).getAuthorizedUser();
+    }
+
+    public void authorizeUser(String roomId, String userName) {
+        roomMap.get(roomId).getAuthorizedUser().put(userName, roomId);
+    }
+
+    public void removeAuthorizedUser(String authorizedUser, Room room) {
+        getAuthorizedUser(room.getId()).remove(authorizedUser);
+    }
+
     public List<Integer> getSelectedYearsFromRoomYear(Room room) {
         return roomYearRepository.findAllByRoom(room)
                 .stream()

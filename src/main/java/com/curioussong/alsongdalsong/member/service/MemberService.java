@@ -34,6 +34,7 @@ public class MemberService {
         Member member = Member.builder()
                         .type(Member.MemberType.GUEST)
                         .username(token)
+                        .colorCode("#f8fc03")
                         .build();
 
         memberRepository.save(member);

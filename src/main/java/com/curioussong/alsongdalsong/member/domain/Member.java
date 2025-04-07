@@ -47,10 +47,11 @@ public class Member {
     }
 
     @Builder
-    public Member(String username, String password, MemberType type) {
+    public Member(String username, String password, MemberType type, String colorCode) {
         this.username = username;
         this.password = password;
         this.type = type;
+        this.colorCode = colorCode;
     }
 
     public void enterChannel(Channel channel) {

@@ -6,6 +6,7 @@ import lombok.Setter;
 import org.springframework.data.util.Pair;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,6 +20,7 @@ public class RoomInfo {
     private List<Integer> selectedYears;
     private final Map<BoardEventType, Pair<String, Integer>> interactionEventTarget;
     private List<GameMode> gameModes;
+    private Map<String, String> authorizedUser;
 
     // memberId에 따른 ready상태
     private Map<Long, Boolean> memberReadyStatus;
@@ -31,6 +33,7 @@ public class RoomInfo {
         this.memberReadyStatus = new ConcurrentHashMap<>();
         this.interactionEventTarget = new ConcurrentHashMap<>();
         this.gameModes = new ArrayList<>();
+        this.authorizedUser = new HashMap<>();
     }
 
 }

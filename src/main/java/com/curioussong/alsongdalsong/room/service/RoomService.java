@@ -70,6 +70,7 @@ public class RoomService {
         setupRoomGames(room, request.getGameModes());
         setupRoomYears(room, request.getSelectedYears());
         notifyRoomCreation(room, request.getChannelId());
+        roomManager.authorizeUser(room.getId(), member.getUsername());
 
         return CreateResponse.builder()
                 .channelId(room.getChannel().getId())
@@ -85,6 +86,7 @@ public class RoomService {
 
         room.addMember(member);
         roomManager.getReadyStatus(roomId).put(member.getId(), false);
+        roomManager.removeAuthorizedUser(userName, room);
 
         sendRoomAndUserInfo(channelId, roomId, room);
 
@@ -235,25 +237,27 @@ public class RoomService {
     }
 
     @Transactional(readOnly = true)
+    public boolean canEnterRoom(String roomId) {
+        return !isRoomFinished(roomId) || !isRoomFull(roomId) || !isRoomInProgress(roomId);
+    }
+
     public boolean isRoomFull(String roomId) {
         Room room = findRoomById(roomId);
         return room.getMembers().size() == room.getMaxPlayer();
     }
 
-    @Transactional(readOnly = true)
     public boolean isRoomInProgress(String roomId) {
         Room room = findRoomById(roomId);
         return room.getStatus() == Room.RoomStatus.IN_PROGRESS;
     }
 
-    @Transactional(readOnly = true)
     public boolean isRoomFinished(String roomId) {
         Room room = findRoomById(roomId);
         return room.getStatus() == Room.RoomStatus.FINISHED;
     }
 
     @Transactional
-    public EnterRoomResponse enterRoom(EnterRoomRequest request) {
+    public EnterRoomResponse enterRoom(String userName, EnterRoomRequest request) {
         Room room = findRoomById(request.getRoomId());
 
         if(!room.getPassword().equals(request.getPassword())) {
@@ -263,10 +267,27 @@ public class RoomService {
                     .build();
         }
 
+        roomManager.authorizeUser(userName, room.getId());
+
         return EnterRoomResponse.builder()
                 .roomId(request.getRoomId())
                 .success(true)
                 .build();
+    }
+
+    public boolean isAuthorizedUser(String roomId, String userName) {
+        return roomManager.getAuthorizedUser(roomId).containsKey(userName);
+    }
+
+    public boolean hasPassword(String roomId) {
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new HttpClientErrorException(
+                        HttpStatus.BAD_REQUEST,
+                        "존재하지 않는 방 번호입니다."
+                ));
+        log.info("Password : {}", room.getPassword());
+
+        return !room.getPassword().isBlank();
     }
 
     private Long generateRoomNumber(Long channelId) {

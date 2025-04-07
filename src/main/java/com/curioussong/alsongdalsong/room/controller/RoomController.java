@@ -47,9 +47,10 @@ public class RoomController {
 
     @PostMapping("/enter")
     public ResponseEntity<EnterRoomResponse> enterRoom(
+            @RequestHeader("Authorization") String token,
             @RequestBody EnterRoomRequest request
     ){
-        EnterRoomResponse response = roomService.enterRoom(request);
+        EnterRoomResponse response = roomService.enterRoom(token, request);
         return ResponseEntity.ok(response);
     }
 
