@@ -97,10 +97,9 @@ public class Room {
         this.channel = channel;
     }
 
-    public void update(String title, String password, RoomFormat format, Integer maxPlayer, Integer maxGameRound) {
+    public void update(String title, String password, Integer maxPlayer, Integer maxGameRound) {
         this.title = title;
         this.password = password;
-        this.format = format;
         this.maxPlayer = maxPlayer;
         this.maxGameRound = maxGameRound;
     }

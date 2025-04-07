@@ -154,6 +154,13 @@ public class RoomService {
 
         validateRoomHost(room, member);
 
+        if(!room.getFormat().name().equals(request.getFormat())) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "방 생성 후에는 맵(보드판/점수판)을 변경할 수 없습니다."
+            );
+        }
+
         validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
 
         if (room.getMembers().size() > request.getMaxPlayer()) {
@@ -165,7 +172,7 @@ public class RoomService {
 
         updateRoomGames(room, request.getGameModes());
 
-        room.update(request.getTitle(), request.getPassword(), Room.RoomFormat.valueOf(request.getFormat()),
+        room.update(request.getTitle(), request.getPassword(),
                 request.getMaxPlayer(), request.getMaxGameRound());
 
         updateRoomYears(room, request.getSelectedYears());

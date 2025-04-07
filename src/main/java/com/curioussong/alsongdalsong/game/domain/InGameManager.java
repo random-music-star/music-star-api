@@ -75,6 +75,7 @@ public class InGameManager {
         List<TtsSong> selectedTtsSongs = ttsSongRepository.findRandomTtsSongsByYears(roomInfo.getSelectedYears(), room.getMaxGameRound());
 
         int songIndex = 0;
+        int ttsIndex = 0;
         for (int round = 1; round <= room.getMaxGameRound(); round++) {
             GameMode gameMode = getRandomGameMode(gameModes);
 
@@ -83,9 +84,11 @@ public class InGameManager {
                 Song secondSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, songIndex++);
 
                 inGameInfo.getRoundInfo().put(round, SongPair.createDual(gameMode, firstSong, secondSong));
+            } else if(gameMode == GameMode.TTS) {
+                Song selectedSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, ttsIndex++);
+                inGameInfo.getRoundInfo().put(round, SongPair.createSingle(gameMode, selectedSong));
             } else {
                 Song selectedSong = selectSongForRound(gameMode, selectedSongs, selectedTtsSongs, songIndex++);
-
                 inGameInfo.getRoundInfo().put(round, SongPair.createSingle(gameMode, selectedSong));
             }
         }
