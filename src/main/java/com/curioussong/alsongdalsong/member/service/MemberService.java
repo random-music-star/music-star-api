@@ -98,6 +98,7 @@ public class MemberService {
                 .username(username)
                 .password(password)
                 .type(Member.MemberType.USER)
+                .colorCode("#f8fc03")
                 .build();
 
         memberRepository.save(member);
