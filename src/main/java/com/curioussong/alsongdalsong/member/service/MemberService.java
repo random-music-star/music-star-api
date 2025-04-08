@@ -96,13 +96,13 @@ public class MemberService {
             );
         }
 
-        if (toxicUserName.isToxic(username)) {
-            log.info("toxic user name : {}", username);
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "부적절한 닉네임입니다."
-            );
-        }
+//        if (toxicUserName.isToxic(username)) {
+//            log.info("toxic user name : {}", username);
+//            throw new HttpClientErrorException(
+//                    HttpStatus.BAD_REQUEST,
+//                    "부적절한 닉네임입니다."
+//            );
+//        }
 
         Member member = Member.builder()
                 .username(username)
