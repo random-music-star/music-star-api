@@ -6,6 +6,7 @@ import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
 import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
+import com.curioussong.alsongdalsong.member.service.external.ToxicUserName;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final ChannelRepository channelRepository;
+    private final ToxicUserName toxicUserName;
 
     public String guestLogin() {
         Member lastGuestMember = memberRepository.findFirstByTypeOrderByIdDesc(Member.MemberType.GUEST);
@@ -94,9 +96,18 @@ public class MemberService {
             );
         }
 
+        if (toxicUserName.isToxic(username)) {
+            log.info("toxic user name : {}", username);
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "부적절한 닉네임입니다."
+            );
+        }
+
         Member member = Member.builder()
                 .username(username)
                 .password(password)
+                .colorCode("#f8fc03")
                 .type(Member.MemberType.USER)
                 .colorCode("#f8fc03")
                 .build();
