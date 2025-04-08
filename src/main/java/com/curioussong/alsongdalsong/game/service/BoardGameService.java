@@ -68,7 +68,7 @@ public class BoardGameService {
 
     private boolean isGameEnd(Room room, int currentRound) {
         return currentRound == roomManager.getMaxGameRound(room.getId()) + 1
-                || inGameManager.getScore(room.getId()).values().stream().anyMatch(score -> score >= 19);
+                || inGameManager.getScore(room.getId()).values().stream().anyMatch(score -> score >= 20);
     }
 
     private void initializeRound(Room room) {
@@ -174,7 +174,7 @@ public class BoardGameService {
                 userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
                 gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
 
-                if (userScores.get(currentRoundWinner) >= 19) { // 목표 지점 도달 시
+                if (userScores.get(currentRoundWinner) >= 20) { // 목표 지점 도달 시
                     return;
                 }
 
