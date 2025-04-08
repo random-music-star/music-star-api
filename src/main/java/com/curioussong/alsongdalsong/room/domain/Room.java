@@ -122,7 +122,13 @@ public class Room {
     }
 
     public void updateStatus(RoomStatus status) {
-        this.status = status;
+        if(isChangeableStatus()) {
+            this.status = status;
+        }
+    }
+
+    private boolean isChangeableStatus(){
+        return this.status != RoomStatus.FINISHED;
     }
 
     public void addMember(Member member) {
