@@ -1,6 +1,8 @@
 package com.curioussong.alsongdalsong.gameround.event;
 
+import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
+import com.curioussong.alsongdalsong.game.dto.song.SongType;
 import com.curioussong.alsongdalsong.gameround.domain.GameRound;
 import com.curioussong.alsongdalsong.gameround.repository.GameRoundRepository;
 import com.curioussong.alsongdalsong.gamesession.domain.GameSession;
@@ -42,15 +44,27 @@ public class GameRoundLogEventListener {
         GameSession session = gameSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new IllegalStateException("GameSession not found"));
 
-        GameRound round = GameRound.builder()
+        GameRound.GameRoundBuilder gameRoundBuilder = GameRound.builder()
                 .gameSession(session)
                 .roundNumber(event.roundNumber())
                 .gameMode(event.gameMode())
                 .year(event.firstSong().getYear())
-                .song(event.firstSong().toSong())
-                .secondSong(event.secondSong() == null ? null : event.secondSong().toSong())
-                .startTime(event.timestamp())
-                .build();
+                .startTime(event.timestamp());
+
+        if (event.firstSong().getType() == SongType.TTS_SONG) {
+            // TTS 모드
+            gameRoundBuilder.ttsSong(event.firstSong().toTtsSong());
+        } else {
+            // FULL 또는 DUAL 모드
+            gameRoundBuilder
+                    .song(event.firstSong().toSong());
+
+            // DUAL 모드는 secondSong도 설정
+            if (event.gameMode() == GameMode.DUAL && event.secondSong() != null) {
+                gameRoundBuilder.secondSong(event.secondSong().toSong());
+            }
+        }
+        GameRound round = gameRoundBuilder.build();
 
         gameRoundRepository.save(round);
         log.debug("GameRound START 기록 - session: {}, round: {}", sessionId, event.roundNumber());

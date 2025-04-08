@@ -44,6 +44,10 @@ public class GameRound {
     private Song secondSong;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tts_song_id")
+    private TtsSong ttsSong;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "winner_id")
     private Member winner;
 
