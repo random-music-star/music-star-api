@@ -4,6 +4,7 @@ import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
+import com.curioussong.alsongdalsong.game.dto.song.SongInfo;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
@@ -68,11 +69,11 @@ public class GeneralGameService {
     public void handleRoundStart(String destination, Long channelId, Room room) {
         int currentRound = inGameManager.getCurrentRound(room.getId());
         GameMode gameMode = inGameManager.getCurrentRoundGameMode(room.getId());
-        Song currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
+        SongInfo currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
 
         int songPlayTime = currentRoundSong.getPlayTime();
 
-        Song secondSong = null;
+        SongInfo secondSong = null;
         if (inGameManager.hasSecondSongInCurrentRound(room.getId())) {
             secondSong = inGameManager.getSecondSongForCurrentRound(room.getId());
             songPlayTime = Math.min(songPlayTime, secondSong.getPlayTime());
@@ -237,8 +238,8 @@ public class GeneralGameService {
         String userAnswer = chatRequestDTO.getRequest().getMessage();
         GameMode gameMode = inGameManager.getCurrentRoundGameMode(roomId);
 
-        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
-        Song secondSong = inGameManager.hasSecondSongInCurrentRound(roomId)
+        SongInfo firstSong = inGameManager.getCurrentRoundSong(roomId);
+        SongInfo secondSong = inGameManager.hasSecondSongInCurrentRound(roomId)
                 ? inGameManager.getSecondSongForCurrentRound(roomId)
                 : null;
 
@@ -282,8 +283,8 @@ public class GeneralGameService {
     }
 
     private void sendGameResult(String destination, String roomId, String userName) {
-        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
-        Song secondSong = null;
+        SongInfo firstSong = inGameManager.getCurrentRoundSong(roomId);
+        SongInfo secondSong = null;
         if (inGameManager.hasSecondSongInCurrentRound(roomId)) {
             secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
         }
