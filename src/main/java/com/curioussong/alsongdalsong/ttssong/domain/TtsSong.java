@@ -1,15 +1,14 @@
 package com.curioussong.alsongdalsong.ttssong.domain;
 
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 @Entity
 @Getter
+@Builder
 @Table(name="tts_song")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PROTECTED)
 public class TtsSong {
 
     @Id
@@ -33,15 +32,4 @@ public class TtsSong {
 
     @Column(name = "play_time", nullable = false)
     private Integer playTime;
-
-    @Builder
-    public TtsSong(String korTitle, String engTitle, String artist, String url, Integer year, Integer playTime) {
-        this.korTitle = korTitle;
-        this.engTitle = engTitle;
-        this.artist = artist;
-        this.url = url;
-        this.year = year;
-        this.playTime = playTime;
-    }
-
 }

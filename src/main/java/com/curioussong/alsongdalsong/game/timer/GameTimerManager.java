@@ -3,6 +3,7 @@ package com.curioussong.alsongdalsong.game.timer;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
+import com.curioussong.alsongdalsong.game.dto.song.SongInfo;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.song.domain.Song;
 import com.curioussong.alsongdalsong.util.KoreanConsonantExtractor;
@@ -51,7 +52,7 @@ public class GameTimerManager {
         }).start();
     }
 
-    public void handleRoundStart(String destination, int currentRound, GameMode gameMode,Song currentRoundFirstSong, Song currentRoundSecondSong, String roomId, Runnable roundStartComplete) {
+    public void handleRoundStart(String destination, int currentRound, GameMode gameMode,SongInfo currentRoundFirstSong, SongInfo currentRoundSecondSong, String roomId, Runnable roundStartComplete) {
         gameMessageSender.sendRoundInfo(destination, currentRound, gameMode, currentRoundFirstSong, currentRoundSecondSong);
         // 2.5초 후 roundInfo 전달
         roomRoundTimerSchedulers.get(roomId).schedule(
@@ -102,10 +103,10 @@ public class GameTimerManager {
     }
 
     private void sendConsonantHint(String destination, String roomId) {
-        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
+        SongInfo firstSong = inGameManager.getCurrentRoundSong(roomId);
         String firstSongConsonants = KoreanConsonantExtractor.extractConsonants(firstSong.getKorTitle());
         if(inGameManager.hasSecondSongInCurrentRound(roomId)) {
-            Song secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
+            SongInfo secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
             String secondSongConsonants = KoreanConsonantExtractor.extractConsonants(secondSong.getKorTitle());
             gameMessageSender.sendHint(destination, firstSongConsonants, null, secondSongConsonants, null);
         } else{
@@ -114,10 +115,10 @@ public class GameTimerManager {
     }
 
     private void sendSingerHint(String destination, String roomId) {
-        Song firstSong = inGameManager.getCurrentRoundSong(roomId);
+        SongInfo firstSong = inGameManager.getCurrentRoundSong(roomId);
         String firstSongConsonants = KoreanConsonantExtractor.extractConsonants(firstSong.getKorTitle());
         if(inGameManager.hasSecondSongInCurrentRound(roomId)) {
-            Song secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
+            SongInfo secondSong = inGameManager.getSecondSongForCurrentRound(roomId);
             String secondSongConsonants = KoreanConsonantExtractor.extractConsonants(secondSong.getKorTitle());
             gameMessageSender.sendHint(destination, firstSongConsonants, firstSong.getArtist(), secondSongConsonants, secondSong.getArtist());
         } else{

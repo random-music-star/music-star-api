@@ -28,6 +28,7 @@ import com.curioussong.alsongdalsong.game.dto.roundopen.RoundOpenResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.roundstart.RoundStartResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.skip.SkipResponse;
 import com.curioussong.alsongdalsong.game.dto.skip.SkipResponseDTO;
+import com.curioussong.alsongdalsong.game.dto.song.SongInfo;
 import com.curioussong.alsongdalsong.game.dto.timer.Response;
 import com.curioussong.alsongdalsong.game.dto.timer.TimerResponse;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
@@ -66,7 +67,7 @@ public class GameMessageSender {
         messagingTemplate.convertAndSend(destination, chatResponseDTO);
     }
 
-    public void sendRoundInfo(String destination, int currentRound, GameMode gameMode, Song currentRoundFirstSong, Song currentRoundSecondSong) {
+    public void sendRoundInfo(String destination, int currentRound, GameMode gameMode, SongInfo currentRoundFirstSong, SongInfo currentRoundSecondSong) {
         log.debug("sendRoundInfo 호출됨 - destination: {}, round: {}", destination, currentRound);
 
         messagingTemplate.convertAndSend(destination, RoundResponseDTO.builder()
@@ -125,7 +126,7 @@ public class GameMessageSender {
                 .build());
     }
 
-    public void sendGameResult(String destination, String userName, Song firstSong, Song secondSong) {
+    public void sendGameResult(String destination, String userName, SongInfo firstSong, SongInfo secondSong) {
         String koreanTitle = firstSong.getKorTitle();
         String englishTitle = firstSong.getEngTitle();
         StringBuilder title = new StringBuilder();

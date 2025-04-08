@@ -7,6 +7,7 @@ import com.curioussong.alsongdalsong.gamesession.domain.GameSession;
 import com.curioussong.alsongdalsong.gamesession.repository.GameSessionRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
+import com.curioussong.alsongdalsong.song.domain.Song;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -46,8 +47,8 @@ public class GameRoundLogEventListener {
                 .roundNumber(event.roundNumber())
                 .gameMode(event.gameMode())
                 .year(event.firstSong().getYear())
-                .song(event.firstSong())
-                .secondSong(event.secondSong())
+                .song(event.firstSong().toSong())
+                .secondSong(event.secondSong() == null ? null : event.secondSong().toSong())
                 .startTime(event.timestamp())
                 .build();
 
