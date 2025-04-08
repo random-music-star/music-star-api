@@ -88,6 +88,7 @@ public class RoomService {
         room.addMember(member);
         roomManager.getReadyStatus(roomId).put(member.getId(), false);
         roomManager.removeAuthorizedUser(userName, room);
+        roomManager.addUserColorNumber(room.getId(), userName);
 
         sendRoomAndUserInfo(channelId, roomId, room);
 
@@ -278,7 +279,7 @@ public class RoomService {
         }
 
         roomManager.authorizeUser(room.getId(), userName);
-        roomManager.addUserColorNumber(room.getId(), userName);
+//        roomManager.addUserColorNumber(room.getId(), userName);
 
         return EnterRoomResponse.builder()
                 .roomId(request.getRoomId())
