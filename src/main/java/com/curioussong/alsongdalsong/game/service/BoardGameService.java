@@ -87,7 +87,8 @@ public class BoardGameService {
         SongInfo secondSong = null;
         if (inGameManager.hasSecondSongInCurrentRound(room.getId())) {
             secondSong = inGameManager.getSecondSongForCurrentRound(room.getId());
-            songPlayTime = Math.min(songPlayTime, secondSong.getPlayTime());
+            int minPlayTime = Math.min(songPlayTime, secondSong.getPlayTime());
+            songPlayTime = Math.max(minPlayTime-30, 0);
         }
 
         eventPublisher.publishEvent(new GameRoundLogEvent(
