@@ -223,14 +223,14 @@ public class BoardEventHandler {
 
     private void handleCloverEvent(String destination, String roomId, String trigger, int currentPosition) {
         int cloverMove = 5;
-        int newPosition = currentPosition + cloverMove;
+        int newPosition = Math.min(currentPosition + cloverMove, 19);
         updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
 
     private void handlePlusEvent(String destination, String roomId, String trigger, int currentPosition) {
         // 1~2칸 앞으로 이동
         int plusAmount = ThreadLocalRandom.current().nextInt(1, 3);
-        int newPosition = currentPosition + plusAmount;
+        int newPosition = Math.min(currentPosition + plusAmount, 19);
         log.info("PLUS event: {} moved forward by {} steps (new position: {})", trigger, plusAmount, newPosition);
         updatePositionAndSendMessage(destination, roomId, trigger, newPosition);
     }
