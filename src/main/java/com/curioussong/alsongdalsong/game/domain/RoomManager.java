@@ -170,6 +170,12 @@ public class RoomManager {
         gameMessageSender.sendRoomInfo(destination, room, roomInfo.getSelectedYears(), gameModes);
     }
 
+    public void updateGameModes(Room room, List<GameMode> gameModes) {
+        RoomInfo roomInfo = getRoomInfo(room.getId());
+        roomInfo.getGameModes().clear();
+        roomInfo.getGameModes().addAll(gameModes);
+    }
+
     public int getMaxGameRound(String roomId) {
         RoomInfo roomInfo = roomMap.get(roomId);
         return roomInfo.getMaxGameRound();

@@ -171,6 +171,7 @@ public class RoomService {
         }
 
         updateRoomGames(room, request.getGameModes());
+        roomManager.updateGameModes(room, request.getGameModes());
 
         room.update(request.getTitle(), request.getPassword(),
                 request.getMaxPlayer(), request.getMaxGameRound());
