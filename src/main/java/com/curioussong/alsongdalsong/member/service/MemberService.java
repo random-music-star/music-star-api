@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.member.service;
 
 import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
+import com.curioussong.alsongdalsong.common.util.BadWordFilter;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
 import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
@@ -96,13 +97,12 @@ public class MemberService {
             );
         }
 
-//        if (toxicUserName.isToxic(username)) {
-//            log.info("toxic user name : {}", username);
-//            throw new HttpClientErrorException(
-//                    HttpStatus.BAD_REQUEST,
-//                    "부적절한 닉네임입니다."
-//            );
-//        }
+        if (BadWordFilter.containsBadWord(username)) {
+            throw new HttpClientErrorException(
+                    HttpStatus.BAD_REQUEST,
+                    "부적절한 닉네임입니다."
+            );
+        }
 
         Member member = Member.builder()
                 .username(username)

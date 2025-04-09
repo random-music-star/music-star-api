@@ -21,6 +21,7 @@ import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
+import com.curioussong.alsongdalsong.common.util.Destination;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -399,7 +400,7 @@ public class RoomService {
     }
 
     private void sendRoomAndUserInfo(Long channelId, String roomId, Room room) {
-        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+        String destination = Destination.room(channelId, roomId);
 
         gameMessageSender.sendRoomInfo(destination, room,
                 roomManager.getSelectedYears(roomId),

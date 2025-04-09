@@ -11,17 +11,17 @@ import java.util.concurrent.ThreadLocalRandom;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public enum BoardEventType {
 
-    PLUS(26, false, true),
-    MINUS(23, false, true),
-    NOTHING(20, false, true),
+    PLUS(40, false, true),
+    MINUS(15, false, true),
+    NOTHING(25, false, true),
 
     BOMB(1, false, true),
     CLOVER(1, false, true),
 
-    PULL(8, true, false),
-    SWAP(8, true, false),
-    MAGNET(8, true, false),
-    WARP(5, false, true),
+    PULL(5, true, false),
+    SWAP(5, true, false),
+    MAGNET(5, true, false),
+    WARP(3, false, true),
 
     OVERLAP(0, true, false);
 

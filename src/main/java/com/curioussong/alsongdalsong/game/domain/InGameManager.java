@@ -43,6 +43,7 @@ public class InGameManager {
         initializeSongs(inGameInfo, room); // 노래 세팅
         initializeSkipStatus(room); // 스킵 상태 초기화
         initializeGameSessionId(room);
+        initializeIsSongPlaying(room);
     }
 
     private void initializeGameSessionId(Room room) {
@@ -104,6 +105,10 @@ public class InGameManager {
                 inGameInfo.getRoundInfo().put(round, SongPair.createSingle(gameMode, selectedSong));
             }
         }
+    }
+
+    private void initializeIsSongPlaying(Room room) {
+        inGameMap.get(room.getId()).getIsSongPlaying().put(room.getId(), false);
     }
 
     private GameMode getRandomGameMode(List<GameMode> gameModes) {

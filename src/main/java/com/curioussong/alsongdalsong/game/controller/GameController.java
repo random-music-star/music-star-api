@@ -32,11 +32,6 @@ public class GameController {
         gameService.toggleReady(request.getUsername(), channelId, roomId);
     }
 
-    @MessageMapping("/channel/{channelId}")
-    public void handleChannelChat(ChatRequestDTO chatRequestDTO, @DestinationVariable Long channelId) {
-        gameService.channelChatMessage(chatRequestDTO, channelId);
-    }
-
     @MessageMapping("/channel/{channelId}/room/{roomId}")
     public void handleRoomChat(ChatRequestDTO chatRequestDTO, @DestinationVariable Long channelId, @DestinationVariable String roomId) {
         gameService.roomChatMessage(chatRequestDTO, channelId, roomId);

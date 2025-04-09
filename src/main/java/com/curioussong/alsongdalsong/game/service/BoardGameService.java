@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.game.service;
 
+import com.curioussong.alsongdalsong.common.util.GameUtil;
 import com.curioussong.alsongdalsong.game.board.BoardEventHandler;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
@@ -8,7 +9,6 @@ import com.curioussong.alsongdalsong.game.dto.board.BoardEventResponseDTO;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.song.SongInfo;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
-import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.game.util.SongAnswerValidator;
@@ -19,7 +19,7 @@ import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
-import com.curioussong.alsongdalsong.song.domain.Song;
+import com.curioussong.alsongdalsong.common.util.Destination;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,6 +51,10 @@ public class BoardGameService {
     private final BoardEventHandler boardEventHandler;
     private final ApplicationEventPublisher eventPublisher;
 
+    private static final int WINNING_SCORE = 20;
+    private static final int BEFORE_MOVE_DELAY_MS = 500;
+    private static final int MOVE_DELAY_MS = 300;
+
     public void startRound(Long channelId, Room room, String destination) {
         int currentRound = inGameManager.getCurrentRound(room.getId());
         // 사용자가 목표 지점에 도달 || 최대 라운드 도달 시 종료
@@ -78,18 +82,13 @@ public class BoardGameService {
     }
 
     public void handleRoundStart(String destination, Long channelId, Room room) {
-        int currentRound = inGameManager.getCurrentRound(room.getId());
-        GameMode gameMode = inGameManager.getCurrentRoundGameMode(room.getId());
-        SongInfo currentRoundSong = inGameManager.getCurrentRoundSong(room.getId());
+        String roomId = room.getId();
+        int currentRound = inGameManager.getCurrentRound(roomId);
+        GameMode gameMode = inGameManager.getCurrentRoundGameMode(roomId);
 
-        int songPlayTime = currentRoundSong.getPlayTime();
-
-        SongInfo secondSong = null;
-        if (inGameManager.hasSecondSongInCurrentRound(room.getId())) {
-            secondSong = inGameManager.getSecondSongForCurrentRound(room.getId());
-            int minPlayTime = Math.min(songPlayTime, secondSong.getPlayTime());
-            songPlayTime = Math.max(minPlayTime-30, 0);
-        }
+        SongInfo currentRoundSong = inGameManager.getCurrentRoundSong(roomId);
+        SongInfo secondSong = getSecondSongIfExists(roomId);
+        int songPlayTime = calculateSongPlayTime(currentRoundSong, secondSong);
 
         eventPublisher.publishEvent(new GameRoundLogEvent(
                 room,
@@ -103,49 +102,46 @@ public class BoardGameService {
                 null
         ));
 
-        int finalSongPlayTime = songPlayTime;
-        gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, secondSong, room.getId(), () -> {
+        gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, secondSong, roomId, () -> {
             // 카운트다운 완료 후 실행될 코드
-            inGameManager.resetAnswered(room.getId());
+            inGameManager.resetAnswered(roomId);
 
             gameTimerManager.scheduleSongPlayTime(
                     destination,
-                    finalSongPlayTime,
-                    room.getId(),
+                    songPlayTime,
+                    roomId,
                     () -> triggerEndEvent(destination, channelId, room)
             );
-            inGameManager.updateIsSongPlaying(room.getId());
+            inGameManager.updateIsSongPlaying(roomId);
         });
     }
 
+
+    private SongInfo getSecondSongIfExists(String roomId) {
+        if (inGameManager.hasSecondSongInCurrentRound(roomId)) {
+            return inGameManager.getSecondSongForCurrentRound(roomId);
+        }
+        return null;
+    }
+
+    private int calculateSongPlayTime(SongInfo song1, SongInfo song2) {
+        if (song2 == null) {
+            return song1.getPlayTime();
+        }
+        int minPlayTime = Math.min(song1.getPlayTime(), song2.getPlayTime());
+        return Math.max(minPlayTime - 30, 0);
+    }
+
     private void triggerEndEvent(String destination, Long channelId, Room room) {
-        log.debug("End event for channel {} in room {}", channelId, room.getId());
+        String roomId = room.getId();
+        log.debug("End event for channel {} in room {}", channelId, roomId);
 
         inGameManager.updateIsSongPlaying(room.getId());
 
-        boolean isWinnerExist = (inGameManager.getRoundWinner(room.getId()).get(room.getId()) != null);
         String winner = inGameManager.getRoundWinner(room.getId()).get(room.getId());
+        boolean isWinnerExist = winner != null;
 
-        gameMessageSender.sendNextMessage(destination,
-                winner,
-                isWinnerExist ? inGameManager.getUserMovement(room.getId()).get(winner) : 0);
-
-        if (isWinnerExist) {
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            gameMessageSender.sendDiceMessage(destination);
-            handleSendingPositionMessage(destination, room.getId(), winner);
-        } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
-            sendGameResult(destination, room.getId(), winner);
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
+        sendMessageForBoardEvent(destination, roomId, winner, isWinnerExist);
 
         eventPublisher.publishEvent(new GameRoundLogEvent(
                 room,
@@ -163,32 +159,39 @@ public class BoardGameService {
         startRound(channelId, room, destination);
     }
 
+    private void sendMessageForBoardEvent(String destination, String roomId, String winner, boolean isWinnerExist) {
+        if (isWinnerExist) {
+            gameMessageSender.sendNextMessage(destination, winner, inGameManager.getUserMovement(roomId).get(winner));
+            GameUtil.sleep(1000);
+            gameMessageSender.sendDiceMessage(destination);
+            handleSendingPositionMessage(destination, roomId, winner);
+        } else { // 정답자 없이 스킵된 경우 바로 다음 라운드 시작
+            sendGameResult(destination, roomId, winner);
+            GameUtil.sleep(3000);
+        }
+    }
+
     private void handleSendingPositionMessage(String destination, String roomId, String currentRoundWinner) {
         Map<String, Integer> userMovement = inGameManager.getUserMovement(roomId);
         Map<String, Integer> userScores = inGameManager.getScore(roomId);
 
-        try {
+        gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
+        GameUtil.sleep(BEFORE_MOVE_DELAY_MS);
+        for (int movement = 1;movement <= userMovement.get(currentRoundWinner); movement++) {
+            userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
             gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
-            Thread.sleep(500);
-            for (int movement = 1;movement <= userMovement.get(currentRoundWinner);movement++) {
-                userScores.put(currentRoundWinner, userScores.get(currentRoundWinner) + 1);
-                gameMessageSender.sendUserPosition(destination, currentRoundWinner, userScores.get(currentRoundWinner));
 
-                if (userScores.get(currentRoundWinner) >= 20) { // 목표 지점 도달 시
-                    return;
-                }
-
-                Thread.sleep(300);
+            if (userScores.get(currentRoundWinner) >= WINNING_SCORE) { // 목표 지점 도달 시
+                return;
             }
 
-            // 이벤트 생성 및 처리
-            int playerCount = userScores.size();
-            BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(currentRoundWinner, playerCount, roomId);
-            boardEventHandler.handleEvent(destination, roomId, eventResponse);
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+            GameUtil.sleep(MOVE_DELAY_MS);
         }
+
+        // 이벤트 생성 및 처리
+        int playerCount = userScores.size();
+        BoardEventResponseDTO eventResponse = boardEventHandler.generateEvent(currentRoundWinner, playerCount, roomId);
+        boardEventHandler.handleEvent(destination, roomId, eventResponse);
     }
 
     private void sendGameResult(String destination, String roomId, String userName) {
@@ -228,7 +231,6 @@ public class BoardGameService {
         }
 
         return isCorrect;
-
     }
 
     public void handleAnswer(String userName, Long channelId, String roomId) {
@@ -248,7 +250,7 @@ public class BoardGameService {
         // 정답 맞춘 상태 처리
         inGameManager.markAsAnswered(roomId);
 
-        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+        String destination = Destination.room(channelId, roomId);
         gameTimerManager.cancelHintTimers(roomId);
 
         sendGameResult(destination, roomId, userName);
@@ -261,7 +263,6 @@ public class BoardGameService {
 
     @Transactional
     public void incrementSkipCount(String roomId, Long channelId, String username) {
-        log.info("try skip");
         Long memberId = memberService.getMemberByToken(username).getId();
 
         // 이미 스킵을 한 사용자라면
@@ -277,7 +278,7 @@ public class BoardGameService {
         // 스킵 상태 변환
         inGameManager.setSkip(roomId, memberId);
         int currentSkipCount = inGameManager.getSkipCount(roomId);
-        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+        String destination = Destination.room(channelId, roomId);
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
@@ -320,7 +321,6 @@ public class BoardGameService {
         List<String> finalWinner = findWinnerByScore(room.getId());
         log.info("Game ended. Final winner: {}", finalWinner);
         gameMessageSender.sendGameEndMessage(destination, finalWinner);
-
 
         // 멤버 상태 초기화
         roomManager.initializeMemberReadyStatus(room.getId());

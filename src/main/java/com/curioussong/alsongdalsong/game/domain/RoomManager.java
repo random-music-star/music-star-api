@@ -7,12 +7,12 @@ import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
 import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
+import com.curioussong.alsongdalsong.common.util.Destination;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -165,8 +165,7 @@ public class RoomManager {
 
         List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(room.getId());
 
-        String destination = String.format("/topic/channel/%d/room/%s", roomInfo.getChannelId(), room.getId());
-
+        String destination = Destination.room(roomInfo.getChannelId(), room.getId());
         gameMessageSender.sendRoomInfo(destination, room, roomInfo.getSelectedYears(), gameModes);
     }
 
@@ -205,5 +204,10 @@ public class RoomManager {
         }
 
         return true;
+    }
+
+    public void updateReadyStatus(String roomId, Long memberId, boolean newReady) {
+        Map<Long, Boolean> roomReadyStatus = getReadyStatus(roomId);
+        roomReadyStatus.put(memberId, newReady);
     }
 }

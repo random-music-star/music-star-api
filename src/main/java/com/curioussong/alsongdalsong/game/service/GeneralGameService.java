@@ -15,7 +15,7 @@ import com.curioussong.alsongdalsong.gamesession.event.GameSessionLogEvent;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
-import com.curioussong.alsongdalsong.song.domain.Song;
+import com.curioussong.alsongdalsong.common.util.Destination;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -212,7 +212,7 @@ public class GeneralGameService {
         // 스킵 상태 변환
         inGameManager.setSkip(roomId, memberId);
         int currentSkipCount = inGameManager.getSkipCount(roomId);
-        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+        String destination = Destination.room(channelId, roomId);
 
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
@@ -276,7 +276,7 @@ public class GeneralGameService {
         // 정답 맞춘 상태 처리
         inGameManager.markAsAnswered(roomId);
 
-        String destination = String.format("/topic/channel/%d/room/%s", channelId, roomId);
+        String destination = Destination.room(channelId, roomId);
         gameTimerManager.cancelHintTimers(roomId);
 
         sendGameResult(destination, roomId, userName);

@@ -92,6 +92,13 @@ public class SongAnswerValidator {
         return isCorrectAnswer(processedUserAnswer, korTitleFirst, engTitleFirst);
     }
 
+    private static String removeParenthesesContent(String input) {
+        while (input.contains("(")) {
+            input = input.replaceAll("\\([^()]*\\)", ""); // 가장 안쪽 괄호부터 제거
+        }
+        return input.trim();
+    }
+
     private static List<String> getAllValidAnswers(String koreanTitle, String englishTitle) {
         List<String> validAnswers = new ArrayList<>();
 
@@ -124,7 +131,7 @@ public class SongAnswerValidator {
             validAnswers.add(englishTitle);
             String preprocessedEnglishAnswer = extractAnswer(englishTitle);
             validAnswers.add(preprocessedEnglishAnswer);
-            String removeParenthesesEnglishTitle = preprocessedEnglishAnswer.replaceAll("\\(.*?\\)", "");
+            String removeParenthesesEnglishTitle = removeParenthesesContent(preprocessedEnglishAnswer);
             validAnswers.add(removeParenthesesEnglishTitle);
             String substituteNumberEnglishTitle = convertNumbersToEnglish(removeParenthesesEnglishTitle);
             validAnswers.add(substituteNumberEnglishTitle);

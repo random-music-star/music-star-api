@@ -5,6 +5,10 @@ import com.curioussong.alsongdalsong.channel.dto.ChannelResponse;
 import com.curioussong.alsongdalsong.channel.enums.ChannelType;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
 import com.curioussong.alsongdalsong.common.sse.SseEmitterManager;
+import com.curioussong.alsongdalsong.common.util.BadWordFilter;
+import com.curioussong.alsongdalsong.common.util.Destination;
+import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
+import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.stomp.SessionManager;
 import jakarta.persistence.EntityNotFoundException;
@@ -22,6 +26,7 @@ public class ChannelService {
     private final MemberRepository memberRepository;
     private final SessionManager sessionManager;
     private final SseEmitterManager sseEmitterManager;
+    private final GameMessageSender gameMessageSender;
 
     public List<ChannelResponse> getAllChannels() {
         List<Channel> channels = channelRepository.findAll();
@@ -71,5 +76,12 @@ public class ChannelService {
                 .playerCount(playerCount)
                 .maxPlayers(channel.getMaxUsers())
                 .build();
+    }
+
+    public void channelChatMessage(ChatRequestDTO chatRequestDTO, Long channelId) {
+        String destination = Destination.channel(channelId);
+        String filteredMessage = BadWordFilter.filter(chatRequestDTO.getRequest().getMessage());
+        chatRequestDTO.getRequest().setMessage(filteredMessage);
+        gameMessageSender.sendChat(chatRequestDTO, destination);
     }
 }
