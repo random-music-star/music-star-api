@@ -8,6 +8,8 @@ import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.RoomDTO;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
+import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
+import com.curioussong.alsongdalsong.roomyear.repository.RoomYearRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -28,6 +30,7 @@ public class GameStatusListener {
     private final SseEmitterManager sseEmitterManager;
     private final RoomGameRepository roomGameRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final RoomYearRepository roomYearRepository;
 
     @EventListener
     @Transactional
@@ -57,7 +60,10 @@ public class GameStatusListener {
         RoomDTO roomDTO = room.toDto();
         List<GameMode> gameModes = roomGameRepository.findGameModesByRoomId(roomDTO.getId());
         roomDTO.setGameModes(gameModes);
-
+        List<Integer> years = roomYearRepository.findAllByRoom(room).stream()
+                .map(RoomYear::getYear)
+                .toList();
+        roomDTO.setYears(years);
         data.put("room", roomDTO);
         data.put("actionType", "UPDATED");
 
