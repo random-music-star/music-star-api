@@ -362,10 +362,10 @@ public class RoomService {
             }
         }
 
-        if(!(maxGameRound == 10 || maxGameRound == 20 || maxGameRound == 30)){
+        if(!(maxGameRound == 5 || maxGameRound == 10 || maxGameRound == 20 || maxGameRound == 30)){
             throw new HttpClientErrorException(
                     HttpStatus.BAD_REQUEST,
-                    "게임 라운드는 10, 20, 30 중 하나여야 합니다."
+                    "게임 라운드는 5, 10, 20, 30 중 하나여야 합니다."
             );
         }
 
