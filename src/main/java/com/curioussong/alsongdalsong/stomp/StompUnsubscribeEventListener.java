@@ -93,8 +93,4 @@ public class StompUnsubscribeEventListener implements ApplicationListener<Sessio
             applicationEventPublisher.publishEvent(new ChannelUserUpdateEvent(channelId, memberStatus, ChannelEventType.LEAVE));
         }
     }
-
-//    public void sendRoomInfoAndUserInfoToSubscribers(Long channelId, String roomId) {
-//        gameService.sendRoomInfoAndUserInfoToSubscriber(channelId, roomId);
-//    }
 }
