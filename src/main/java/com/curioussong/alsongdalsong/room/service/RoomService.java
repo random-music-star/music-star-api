@@ -105,30 +105,66 @@ public class RoomService {
         Member member = findMemberByUsername(userName);
 
         log.info("나가는 멤버: {}", member.getUsername());
+        removeMemberFromRoom(room, member);
 
+        boolean isFinished = updateRoomStatus(room, member, channelId);
+
+        cleanupResources(roomId, userName, member.getId(), room.getStatus());
+
+        updateClientsAfterLeave(channelId, roomId, room, isFinished);
+
+        eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
+        log.debug("이벤트 발행 완료");
+    }
+
+    private void removeMemberFromRoom(Room room, Member member) {
         room.removeMember(member);
         roomRepository.save(room);
-
         log.info("방 나가기 후 멤버 수: {}", room.getMembers().size());
-        boolean isFinished = false;
-        if (isHostLeaving(room, member)) {
-            isFinished = delegateHost(room, member);
-        }
+    }
 
-        roomManager.getReadyStatus(roomId).remove(member.getId());
-        roomManager.removeUserColorNumber(roomId, userName);
+    private boolean updateRoomStatus(Room room, Member member, Long channelId) {
+        // 모든 멤버가 나갔을 때
+        if (room.getMembers().isEmpty()) {
+            return handleEmptyRoom(room, channelId);
+        }
+        // 방장이 나갔을 때
+        else if (isHostLeaving(room, member)) {
+            return delegateHost(room, member);
+        }
+        return false;
+    }
+
+    private boolean handleEmptyRoom(Room room, Long channelId) {
+        // 게임 중이었다면 관련 자원 정리
         if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
-            inGameManager.removeSkipStatusWhoLeaved(roomId, member.getId());
+            inGameManager.clear(room.getId());
         }
 
-        sendRoomAndUserInfo(channelId, roomId, room);
+        log.info("방에 남은 멤버가 없어 FINISHED 상태로 변경 - roomId: {}", room.getId());
+        room.updateStatus(Room.RoomStatus.FINISHED);
+        roomRepository.save(room);
+        roomRepository.flush(); // 즉시 DB에 반영
 
+        eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.FINISHED));
+        return true;
+    }
+
+    private void cleanupResources(String roomId, String userName, Long memberId, Room.RoomStatus roomStatus) {
+        roomManager.getReadyStatus(roomId).remove(memberId);
+        roomManager.removeUserColorNumber(roomId, userName);
+        if (roomStatus == Room.RoomStatus.IN_PROGRESS) {
+            inGameManager.removeSkipStatusWhoLeaved(roomId, memberId);
+        }
+    }
+
+    private void updateClientsAfterLeave(Long channelId, String roomId, Room room, boolean isFinished) {
         if (!isFinished) {
             sendRoomAndUserInfo(channelId, roomId, room);
             eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED));
+        } else {
+            sendRoomAndUserInfo(channelId, roomId, room);
         }
-        eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
-        log.debug("이벤트 발행 완료");
     }
 
     private boolean isHostLeaving(Room room, Member member) {

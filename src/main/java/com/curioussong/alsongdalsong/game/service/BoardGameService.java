@@ -136,27 +136,35 @@ public class BoardGameService {
         String roomId = room.getId();
         log.debug("End event for channel {} in room {}", channelId, roomId);
 
-        inGameManager.updateIsSongPlaying(room.getId());
+        if (room.getMembers().isEmpty() || inGameManager.getInGameInfo(room.getId()) == null) {
+            log.debug("게임 정보가 이미 정리되어 이벤트 처리를 중단합니다.");
+            return;
+        }
+        try {
+            inGameManager.updateIsSongPlaying(room.getId());
 
-        String winner = inGameManager.getRoundWinner(room.getId()).get(room.getId());
-        boolean isWinnerExist = winner != null;
+            String winner = inGameManager.getRoundWinner(room.getId()).get(room.getId());
+            boolean isWinnerExist = winner != null;
 
-        sendMessageForBoardEvent(destination, roomId, winner, isWinnerExist);
+            sendMessageForBoardEvent(destination, roomId, winner, isWinnerExist);
 
-        eventPublisher.publishEvent(new GameRoundLogEvent(
-                room,
-                GameRoundLogEvent.Type.END,
-                inGameManager.getCurrentRound(room.getId()),
-                null,
-                null,
-                null,
-                LocalDateTime.now(),
-                isWinnerExist ? winner : null,
-                inGameManager.getSubmittedAnswer(room.getId())
-        ));
-        inGameManager.clearSubmittedAnswer(room.getId());
-        inGameManager.nextRound(room.getId());
-        startRound(channelId, room, destination);
+            eventPublisher.publishEvent(new GameRoundLogEvent(
+                    room,
+                    GameRoundLogEvent.Type.END,
+                    inGameManager.getCurrentRound(room.getId()),
+                    null,
+                    null,
+                    null,
+                    LocalDateTime.now(),
+                    isWinnerExist ? winner : null,
+                    inGameManager.getSubmittedAnswer(room.getId())
+            ));
+            inGameManager.clearSubmittedAnswer(room.getId());
+            inGameManager.nextRound(room.getId());
+            startRound(channelId, room, destination);
+        } catch (NullPointerException e) {
+            log.debug("방 {} 게임 정보가 이미 정리되었거나 멤버가 없어 이벤트 처리를 중단합니다. {}", room.getId(), e.getMessage());
+        }
     }
 
     private void sendMessageForBoardEvent(String destination, String roomId, String winner, boolean isWinnerExist) {
@@ -314,6 +322,11 @@ public class BoardGameService {
     }
 
     private void endGame(Room room, String destination) {
+        if (room.getMembers().isEmpty() || inGameManager.getInGameInfo(room.getId()) == null) {
+            log.debug("방 {} 게임 종료 - 멤버가 없거나 게임 정보가 삭제되어 처리를 중단합니다.", room.getId());
+            return;
+        }
+
         // 모든 타이머 종료
         gameTimerManager.shutdownAllTimers(room.getId());
 
