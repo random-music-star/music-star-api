@@ -1,5 +1,7 @@
 package com.curioussong.alsongdalsong.config;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -10,6 +12,7 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
 @Slf4j
@@ -42,7 +45,20 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     }
 
     private void handleSend(StompHeaderAccessor accessor, Message<?> message) {
-        log.info("Received Send Message : {}", message.getPayload());
-        log.info("Received : {}", LocalDateTime.now());
+        Object rawPayload = message.getPayload();
+        if (rawPayload instanceof byte[]) {
+            String json = new String((byte[]) rawPayload, StandardCharsets.UTF_8);
+
+            try {
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode root = mapper.readTree(json);
+
+                if (root.has("type") && "roundStartReceived".equals(root.get("type").asText())) {
+                    log.info("노래 재생 시작 시간 : {}", LocalDateTime.now());
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

@@ -52,6 +52,11 @@ public class GameService {
             return;
         }
 
+        // Todo 테스트에서 에러를 막기 위한 코드이며, 추후 삭제해야함.
+        if (chatRequestDTO.getRequest() == null) {
+            return;
+        }
+
         gameMessageSender.sendChat(chatRequestDTO, destination);
 
         String message = chatRequestDTO.getRequest().getMessage();
