@@ -5,9 +5,14 @@ import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
+import com.curioussong.alsongdalsong.game.event.GameChatSaveEvent;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
+import com.curioussong.alsongdalsong.gameround.domain.GameRound;
+import com.curioussong.alsongdalsong.gameround.repository.GameRoundRepository;
+import com.curioussong.alsongdalsong.gamesession.domain.GameSession;
 import com.curioussong.alsongdalsong.gamesession.event.GameSessionLogEvent;
+import com.curioussong.alsongdalsong.gamesession.repository.GameSessionRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
@@ -22,6 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -39,6 +45,8 @@ public class GameService {
     private final GameMessageSender gameMessageSender;
     private final GeneralGameService generalGameService;
     private final BoardGameService boardGameService;
+    private final GameRoundRepository gameRoundRepository;
+    private final GameSessionRepository gameSessionRepository;
 
     public void roomChatMessage(ChatRequestDTO chatRequestDTO, Long channelId, String roomId) {
         String destination = Destination.room(channelId, roomId);
@@ -55,6 +63,16 @@ public class GameService {
         // Todo 테스트에서 에러를 막기 위한 코드이며, 추후 삭제해야함.
         if (chatRequestDTO.getRequest() == null) {
             return;
+        }
+
+        if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
+            Member member = memberService.getMemberByToken(chatRequestDTO.getRequest().getSender());
+            GameSession gameSession = gameSessionRepository.findTopByRoomIdOrderByStartTimeDesc(room.getId())
+                    .orElseThrow(() -> new IllegalStateException("해당 room에 대한 game session을 찾을 수 없습니다."));
+            int currentRound = inGameManager.getCurrentRound(roomId);
+            GameRound round = gameRoundRepository.findByGameSessionIdAndRoundNumber(gameSession.getId(), currentRound)
+                    .orElseThrow(() -> new IllegalStateException("GameRound not found for END"));
+            eventPublisher.publishEvent(new GameChatSaveEvent(member.getId(), gameSession.getId(), round.getId(), chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
         }
 
         gameMessageSender.sendChat(chatRequestDTO, destination);
