@@ -42,7 +42,8 @@ public class StompSubscribeEventListener implements ApplicationListener<SessionS
             return;
         }
 
-        String userName = getUsernameFromHeader(accessor);
+//        String userName = getUsernameFromHeader(accessor);
+        String userName = accessor.getUser().getName();
         log.debug("username {}", userName);
 
         // 채널 토픽 구독 패턴 (예: /topic/channel/1)

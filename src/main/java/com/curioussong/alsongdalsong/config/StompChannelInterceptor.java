@@ -10,6 +10,8 @@ import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
 
         switch (accessor.getCommand()) {
             case CONNECT -> handleConnect(accessor);
+            case SEND -> handleSend(accessor, message);
         }
 
         return message;
@@ -36,5 +39,10 @@ public class StompChannelInterceptor implements ChannelInterceptor {
     private void handleConnect(StompHeaderAccessor accessor) {
         String userId = accessor.getFirstNativeHeader("Authorization");
         accessor.setUser(() -> userId);
+    }
+
+    private void handleSend(StompHeaderAccessor accessor, Message<?> message) {
+        log.info("Received Send Message : {}", message.getPayload());
+        log.info("Received : {}", LocalDateTime.now());
     }
 }
