@@ -31,7 +31,7 @@ public class JwtTokenProvider {
         this.key = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String createToken(String username, List<String> roles) {
+    public String createToken(String username) {
         Claims claims = Jwts.claims().setSubject(username);
 
         Date now = new Date();

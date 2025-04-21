@@ -1,12 +1,9 @@
 package com.curioussong.alsongdalsong.member.service;
 
-import com.curioussong.alsongdalsong.auth.service.AuthService;
 import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
-import com.curioussong.alsongdalsong.common.util.BadWordFilter;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
-import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.member.service.external.ToxicUserName;
 import jakarta.persistence.EntityNotFoundException;

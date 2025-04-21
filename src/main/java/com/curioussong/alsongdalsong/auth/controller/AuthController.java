@@ -1,10 +1,11 @@
 package com.curioussong.alsongdalsong.auth.controller;
 
+import com.curioussong.alsongdalsong.auth.dto.UserSignupRequest;
 import com.curioussong.alsongdalsong.auth.service.AuthService;
 import com.curioussong.alsongdalsong.jwt.JwtTokenProvider;
 import com.curioussong.alsongdalsong.jwt.dto.TokenResponse;
-import com.curioussong.alsongdalsong.member.dto.UserLoginRequest;
-import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
+import com.curioussong.alsongdalsong.auth.dto.UserLoginRequest;
+import com.curioussong.alsongdalsong.auth.dto.UserLoginResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,7 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
 
     @PostMapping("/signup")
-    public ResponseEntity<Void> signup(@RequestBody UserLoginRequest request) {
+    public ResponseEntity<Void> signup(@RequestBody UserSignupRequest request) {
         authService.userSignup(request.username(), request.password());
         return ResponseEntity.ok().build();
     }
@@ -29,13 +30,14 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(@RequestBody UserLoginRequest request) {
         UserLoginResponse user = authService.userLogin(request.username(), request.password());
-        String token = jwtTokenProvider.createToken(user.username(), List.of("ROLE_USER"));
+        String token = jwtTokenProvider.createToken(user.username());
         return ResponseEntity.ok(new TokenResponse(token));
     }
 
     @GetMapping("/guest")
     public ResponseEntity<TokenResponse> guestLogin() {
         String guestToken = authService.guestLogin();
-        return ResponseEntity.ok(new TokenResponse(guestToken));
+        String token = jwtTokenProvider.createToken(guestToken);
+        return ResponseEntity.ok(new TokenResponse(token));
     }
 }

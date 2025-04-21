@@ -2,7 +2,7 @@ package com.curioussong.alsongdalsong.auth.service;
 
 import com.curioussong.alsongdalsong.common.util.BadWordFilter;
 import com.curioussong.alsongdalsong.member.domain.Member;
-import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
+import com.curioussong.alsongdalsong.auth.dto.UserLoginResponse;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
