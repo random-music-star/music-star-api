@@ -1,5 +1,6 @@
 package com.curioussong.alsongdalsong.config;
 
+import com.curioussong.alsongdalsong.common.error.handler.StompExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -18,6 +19,7 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
+    private final StompExceptionHandler stompExceptionHandler;
     private final StompJwtChannelInterceptor stompJwtChannelInterceptor;
     private final StompChannelInterceptor stompChannelInterceptor;
 
@@ -25,6 +27,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*");
+        registry.setErrorHandler(stompExceptionHandler);
     }
 
     @Override
