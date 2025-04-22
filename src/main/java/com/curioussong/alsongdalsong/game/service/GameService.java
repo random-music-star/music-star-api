@@ -1,5 +1,7 @@
 package com.curioussong.alsongdalsong.game.service;
 
+import com.curioussong.alsongdalsong.common.error.stomperror.StompError;
+import com.curioussong.alsongdalsong.common.error.stomperror.StompException;
 import com.curioussong.alsongdalsong.common.util.BadWordFilter;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
@@ -51,7 +53,7 @@ public class GameService {
     public void roomChatMessage(ChatRequestDTO chatRequestDTO, Long channelId, String roomId) {
         String destination = Destination.room(channelId, roomId);
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+                .orElseThrow(() -> new StompException(StompError.ROOM_NOT_FOUND));
 
         if (room.getStatus() == Room.RoomStatus.WAITING) {
             String filteredMessage = BadWordFilter.filter(chatRequestDTO.getRequest().getMessage());
@@ -68,10 +70,10 @@ public class GameService {
         if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
             Member member = memberService.getMemberByToken(chatRequestDTO.getRequest().getSender());
             GameSession gameSession = gameSessionRepository.findTopByRoomIdOrderByStartTimeDesc(room.getId())
-                    .orElseThrow(() -> new IllegalStateException("해당 room에 대한 game session을 찾을 수 없습니다."));
+                    .orElseThrow(() -> new StompException(StompError.GAME_SESSION_NOT_FOUND));
             int currentRound = inGameManager.getCurrentRound(roomId);
             GameRound round = gameRoundRepository.findByGameSessionIdAndRoundNumber(gameSession.getId(), currentRound)
-                    .orElseThrow(() -> new IllegalStateException("GameRound not found for END"));
+                    .orElseThrow(() -> new StompException(StompError.GAME_ROUND_NOT_FOUND));
             eventPublisher.publishEvent(new GameChatSaveEvent(member.getId(), gameSession.getId(), round.getId(), chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
         }
 
@@ -105,7 +107,7 @@ public class GameService {
         Long memberId = member.getId();
 
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+                .orElseThrow(() -> new StompException(StompError.ROOM_NOT_FOUND));
 
         Map<Long, Boolean> roomReadyStatus = roomManager.getReadyStatus(roomId);
         boolean currentReady = Boolean.TRUE.equals(roomReadyStatus.getOrDefault(memberId, false));
@@ -124,9 +126,7 @@ public class GameService {
     @Transactional
     public void startGame(Long channelId, String roomId) {
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "방을 찾을 수 없습니다."));
+                .orElseThrow(() -> new StompException(StompError.ROOM_NOT_FOUND));
         log.debug("Starting game in room {}", roomId);
 
         if (isNotReadyToStart(room)) {

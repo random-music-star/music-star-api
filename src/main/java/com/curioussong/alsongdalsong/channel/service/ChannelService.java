@@ -5,6 +5,8 @@ import com.curioussong.alsongdalsong.channel.dto.ChannelResponse;
 import com.curioussong.alsongdalsong.channel.enums.ChannelType;
 import com.curioussong.alsongdalsong.channel.event.ChannelChatSaveEvent;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
+import com.curioussong.alsongdalsong.common.error.stomperror.StompError;
+import com.curioussong.alsongdalsong.common.error.stomperror.StompException;
 import com.curioussong.alsongdalsong.common.sse.SseEmitterManager;
 import com.curioussong.alsongdalsong.common.util.BadWordFilter;
 import com.curioussong.alsongdalsong.common.util.Destination;
@@ -92,15 +94,9 @@ public class ChannelService {
         gameMessageSender.sendChat(chatRequestDTO, destination);
 
         Channel channel = channelRepository.findById(channelId)
-                .orElseThrow(() -> new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "존재하지 않는 채널입니다."
-                ));
+                .orElseThrow(() -> new StompException(StompError.CHANNEL_NOT_FOUND));
         Member member = memberRepository.findByUsername(chatRequestDTO.getRequest().getSender())
-                .orElseThrow(() -> new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "존재하지 않는 사용자입니다."
-                ));
+                .orElseThrow(() -> new StompException(StompError.USER_NOT_FOUND));
 
         eventPublisher.publishEvent(new ChannelChatSaveEvent(member, channel, chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
     }

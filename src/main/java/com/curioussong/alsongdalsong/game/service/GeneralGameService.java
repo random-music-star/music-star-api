@@ -1,5 +1,7 @@
 package com.curioussong.alsongdalsong.game.service;
 
+import com.curioussong.alsongdalsong.common.error.stomperror.StompError;
+import com.curioussong.alsongdalsong.common.error.stomperror.StompException;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
@@ -226,7 +228,7 @@ public class GeneralGameService {
         String destination = Destination.room(channelId, roomId);
 
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new EntityNotFoundException("방을 찾을 수 없습니다."));
+                .orElseThrow(() -> new StompException(StompError.ROOM_NOT_FOUND));
         int participantCount = room.getMembers().size();
 
         log.debug("Room {} skip count: {}/{}", roomId, currentSkipCount, participantCount);
