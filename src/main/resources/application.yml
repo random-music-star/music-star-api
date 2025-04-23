@@ -14,14 +14,14 @@ spring:
         show-sql: true
     open-in-view: false
 
-  data:
-    mongodb:
-      host: ${MONGODB_HOST_URL}
-      port: ${MONGODB_PORT}
-      username: ${MONGODB_USERNAME}
-      password: ${MONGODB_PASSWORD}
-      authentication-database: ${MONGODB_AUTHENTICATION}
-      database: ${MONGODB_DATABASE}
+#  data:
+#    mongodb:
+#      host: ${MONGODB_HOST_URL}
+#      port: ${MONGODB_PORT}
+#      username: ${MONGODB_USERNAME}
+#      password: ${MONGODB_PASSWORD}
+#      authentication-database: ${MONGODB_AUTHENTICATION}
+#      database: ${MONGODB_DATABASE}
 
 logging:
   level:
