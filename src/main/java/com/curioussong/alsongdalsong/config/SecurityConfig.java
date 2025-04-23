@@ -31,7 +31,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/",
                                 "/auth/**",
-                                "/error")
+                                "/error",
+                                "/sse/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
