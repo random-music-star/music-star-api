@@ -20,18 +20,15 @@ public class RoomController {
     private final MemberService memberService;
 
     @PostMapping()
-    public ResponseEntity<CreateResponse> createRoom(@RequestHeader("Authorization") String token,
-                                                     @RequestBody CreateRequest request) {
-        Member member = memberService.getMemberByToken(token);
+    public ResponseEntity<CreateResponse> createRoom(@RequestBody CreateRequest request) {
+        Member member = memberService.getCurrentMember();
         CreateResponse response = roomService.createRoom(member, request);
         return ResponseEntity.ok(response);
     }
 
     @PatchMapping()
-    public ResponseEntity<?> updateRoom(@RequestHeader("Authorization") String token,
-                                        @RequestBody UpdateRequest request){
-
-        Member member = memberService.getMemberByToken(token);
+    public ResponseEntity<?> updateRoom(@RequestBody UpdateRequest request){
+        Member member = memberService.getCurrentMember();
         roomService.updateRoom(member, request);
         return ResponseEntity.noContent().build();
     }
@@ -46,11 +43,9 @@ public class RoomController {
     }
 
     @PostMapping("/enter")
-    public ResponseEntity<EnterRoomResponse> enterRoom(
-            @RequestHeader("Authorization") String token,
-            @RequestBody EnterRoomRequest request
-    ){
-        EnterRoomResponse response = roomService.enterRoom(token, request);
+    public ResponseEntity<EnterRoomResponse> enterRoom(@RequestBody EnterRoomRequest request){
+        Member member = memberService.getCurrentMember();
+        EnterRoomResponse response = roomService.enterRoom(member.getUsername(), request);
         return ResponseEntity.ok(response);
     }
 

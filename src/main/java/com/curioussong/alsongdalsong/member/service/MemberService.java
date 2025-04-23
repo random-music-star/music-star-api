@@ -10,6 +10,8 @@ import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
@@ -25,15 +27,19 @@ public class MemberService {
     private final ChannelRepository channelRepository;
     private final ToxicUserName toxicUserName;
 
+    public Member getCurrentMember() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        log.debug("current username: {}", username);
+        return memberRepository.findByUsername(username)
+                .orElseThrow(() -> new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
+    }
+
     public  Member getMemberByToken(String token) {
         return memberRepository.findByUsername(token).orElseThrow(() -> new HttpClientErrorException(
                 HttpStatus.NOT_FOUND,
                 "해당 회원이 없습니다."
         ));
-    }
-
-    public Member getMemberById(Long memberId) {
-        return memberRepository.findById(memberId).orElseThrow(() -> new EntityNotFoundException("해당 회원이 없습니다."));
     }
 
     @Transactional
