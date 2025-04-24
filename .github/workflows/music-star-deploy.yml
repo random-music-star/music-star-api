@@ -70,6 +70,7 @@ jobs:
               --name music-star \
               -p 8080:8080 \
               -v /home/ubuntu/music-star/logs:/logs \
+              --network music-star-network \
               --restart unless-stopped \
               ${{ secrets.DOCKERHUB_USERNAME }}/music-star:latest
             echo "[$(date '+%Y-%m-%d %H:%M:%S')] Deployment completed!"
