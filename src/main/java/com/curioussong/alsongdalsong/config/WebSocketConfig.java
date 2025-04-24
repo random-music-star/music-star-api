@@ -18,7 +18,8 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    private final ChannelInterceptor channelInterceptor;
+    private final StompJwtChannelInterceptor stompJwtChannelInterceptor;
+    private final StompChannelInterceptor stompChannelInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -49,6 +50,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
-        registration.interceptors(channelInterceptor);
+        registration
+                .interceptors(stompJwtChannelInterceptor, stompChannelInterceptor);
     }
 }

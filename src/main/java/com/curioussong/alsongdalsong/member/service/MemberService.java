@@ -2,16 +2,16 @@ package com.curioussong.alsongdalsong.member.service;
 
 import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
-import com.curioussong.alsongdalsong.common.util.BadWordFilter;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
-import com.curioussong.alsongdalsong.member.dto.UserLoginResponse;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.member.service.external.ToxicUserName;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
@@ -27,28 +27,12 @@ public class MemberService {
     private final ChannelRepository channelRepository;
     private final ToxicUserName toxicUserName;
 
-    public String guestLogin() {
-        Member lastGuestMember = memberRepository.findFirstByTypeOrderByIdDesc(Member.MemberType.GUEST);
-
-        String token = createGuestToken(lastGuestMember);
-        log.info("사용자 임의 토큰 값 : {}", token);
-
-        // 멤버 생성
-        Member member = Member.builder()
-                        .type(Member.MemberType.GUEST)
-                        .username(token)
-                        .colorCode("#f8fc03")
-                        .build();
-
-        memberRepository.save(member);
-        return token;
-    }
-
-    private String createGuestToken(Member lastGuestMember) {
-        if (lastGuestMember == null) {
-            return "guest_0";
-        }
-        return "guest_" + (Integer.parseInt(lastGuestMember.getUsername().replace("guest_", ""))+1);
+    public Member getCurrentMember() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        log.debug("current username: {}", username);
+        return memberRepository.findByUsername(username)
+                .orElseThrow(() -> new HttpClientErrorException(HttpStatus.UNAUTHORIZED));
     }
 
     public  Member getMemberByToken(String token) {
@@ -56,81 +40,6 @@ public class MemberService {
                 HttpStatus.NOT_FOUND,
                 "해당 회원이 없습니다."
         ));
-    }
-
-    public Member getMemberById(Long memberId) {
-        return memberRepository.findById(memberId).orElseThrow(() -> new EntityNotFoundException("해당 회원이 없습니다."));
-    }
-
-    public void userSignup(String username, String password) {
-        if (memberRepository.findByUsername(username).isPresent()) {
-            throw new HttpClientErrorException(
-                    HttpStatus.CONFLICT,
-                    "이미 존재하는 회원입니다.");
-        }
-
-        if (username == null || username.isEmpty()) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "사용자 이름은 필수 항목입니다."
-            );
-        }
-
-        if (username.contains(" ")) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "사용자 이름에는 공백을 포함할 수 없습니다."
-            );
-        }
-
-        if (!username.matches("^[a-zA-Z0-9]+$")) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "사용자 이름은 영어와 숫자만 포함할 수 있습니다."
-            );
-        }
-
-        if (password == null || password.isEmpty()) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "비밀번호는 필수 항목입니다."
-            );
-        }
-
-        if (BadWordFilter.containsBadWord(username)) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "부적절한 닉네임입니다."
-            );
-        }
-
-        Member member = Member.builder()
-                .username(username)
-                .password(password)
-                .colorCode("#f8fc03")
-                .type(Member.MemberType.USER)
-                .colorCode("#f8fc03")
-                .build();
-
-        memberRepository.save(member);
-    }
-
-    public UserLoginResponse userLogin(String username, String password) {
-        Member member = memberRepository.findByUsername(username)
-                .orElseThrow(() -> new HttpClientErrorException(
-                        HttpStatus.NOT_FOUND,
-                        "존재하지 않는 회원입니다."
-                ));
-
-        if (!password.equals(member.getPassword())) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "비밀번호가 틀렸습니다."
-            );
-        }
-
-
-        return new UserLoginResponse(username);
     }
 
     @Transactional
