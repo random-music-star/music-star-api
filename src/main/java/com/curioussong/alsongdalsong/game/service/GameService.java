@@ -56,25 +56,13 @@ public class GameService {
                 .orElseThrow(() -> new StompException(StompError.ROOM_NOT_FOUND));
 
         if (room.getStatus() == Room.RoomStatus.WAITING) {
-            String filteredMessage = BadWordFilter.filter(chatRequestDTO.getRequest().getMessage());
-            chatRequestDTO.getRequest().setMessage(filteredMessage);
+            filterMessage(chatRequestDTO);
             gameMessageSender.sendChat(chatRequestDTO, destination);
             return;
         }
 
-        // Todo 테스트에서 에러를 막기 위한 코드이며, 추후 삭제해야함.
-        if (chatRequestDTO.getRequest() == null) {
-            return;
-        }
-
         if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
-            Member member = memberService.getMemberByToken(chatRequestDTO.getRequest().getSender());
-            GameSession gameSession = gameSessionRepository.findTopByRoomIdOrderByStartTimeDesc(room.getId())
-                    .orElseThrow(() -> new StompException(StompError.GAME_SESSION_NOT_FOUND));
-            int currentRound = inGameManager.getCurrentRound(roomId);
-            GameRound round = gameRoundRepository.findByGameSessionIdAndRoundNumber(gameSession.getId(), currentRound)
-                    .orElseThrow(() -> new StompException(StompError.GAME_ROUND_NOT_FOUND));
-            eventPublisher.publishEvent(new GameChatSaveEvent(member.getId(), gameSession.getId(), round.getId(), chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
+            saveInGameChat(chatRequestDTO, roomId);
         }
 
         gameMessageSender.sendChat(chatRequestDTO, destination);
@@ -94,6 +82,21 @@ public class GameService {
                 boardGameService.handleAnswer(sender, channelId, roomId);
             }
         }
+    }
+
+    private void filterMessage(ChatRequestDTO chatRequestDTO) {
+        String filteredMessage = BadWordFilter.filter(chatRequestDTO.getRequest().getMessage());
+        chatRequestDTO.getRequest().setMessage(filteredMessage);
+    }
+
+    private void saveInGameChat(ChatRequestDTO chatRequestDTO, String roomId) {
+        Member member = memberService.getMemberByToken(chatRequestDTO.getRequest().getSender());
+        GameSession gameSession = gameSessionRepository.findTopByRoomIdOrderByStartTimeDesc(roomId)
+                .orElseThrow(() -> new StompException(StompError.GAME_SESSION_NOT_FOUND));
+        int currentRound = inGameManager.getCurrentRound(roomId);
+        GameRound round = gameRoundRepository.findByGameSessionIdAndRoundNumber(gameSession.getId(), currentRound)
+                .orElseThrow(() -> new StompException(StompError.GAME_ROUND_NOT_FOUND));
+        eventPublisher.publishEvent(new GameChatSaveEvent(member.getId(), gameSession.getId(), round.getId(), chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
     }
 
     private boolean isSkipChat(String message) {
@@ -117,9 +120,14 @@ public class GameService {
         log.debug("User {} ready status: {} -> {}", username, currentReady, newReady);
         log.debug("Room {} ready status map: {}", roomId, roomReadyStatus);
 
+
+        sendUserInfo(room, channelId);
+    }
+
+    private void sendUserInfo(Room room, Long channelId) {
         List<UserInfo> userInfoList = roomManager.getUserInfos(room);
         boolean allReady = roomManager.isAllReady(room);
-        String destination = Destination.room(channelId, roomId);
+        String destination = Destination.room(channelId, room.getId());
         gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
     }
 
