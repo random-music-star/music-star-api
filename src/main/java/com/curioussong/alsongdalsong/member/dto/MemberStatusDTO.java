@@ -1,29 +1,34 @@
 package com.curioussong.alsongdalsong.member.dto;
 
 import com.curioussong.alsongdalsong.member.domain.Member;
-import com.curioussong.alsongdalsong.room.domain.Room;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
+
+import java.util.List;
 
 @Getter
 @Builder
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PROTECTED)
 public class MemberStatusDTO {
-    private String username;
-    private Member.MemberType memberType;
-    private Boolean inLobby;
-    private Room.RoomStatus roomStatus;
+    private final List<MemberStatus> userList;
+
+    public static MemberStatusDTO from(List<Member> members) {
+        List<MemberStatus> statusList = members.stream()
+                .map(MemberStatus::from)
+                .toList();
+
+        return new MemberStatusDTO(statusList);
+    }
 
     public static MemberStatusDTO from(Member member) {
-        MemberStatusDTOBuilder memberStatusDTO = MemberStatusDTO.builder()
-                .username(member.getUsername())
-                .memberType(member.getType())
-                .inLobby(member.getRoom()==null);
+        return new MemberStatusDTO(List.of(MemberStatus.from(member)));
+    }
 
-        if(member.getRoom()!=null){
-            memberStatusDTO.roomStatus(member.getRoom().getStatus());
+    @JsonIgnore
+    public String getUsername() {
+        if (userList == null || userList.size() != 1) {
+            return null;
         }
-
-        return memberStatusDTO.build();
+        return userList.get(0).getUsername();
     }
 }
