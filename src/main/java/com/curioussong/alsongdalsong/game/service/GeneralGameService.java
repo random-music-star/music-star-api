@@ -2,6 +2,7 @@ package com.curioussong.alsongdalsong.game.service;
 
 import com.curioussong.alsongdalsong.common.error.stomperror.StompError;
 import com.curioussong.alsongdalsong.common.error.stomperror.StompException;
+import com.curioussong.alsongdalsong.common.util.GameUtil;
 import com.curioussong.alsongdalsong.game.domain.GameMode;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
@@ -18,7 +19,6 @@ import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
 import com.curioussong.alsongdalsong.common.util.Destination;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -94,18 +94,29 @@ public class GeneralGameService {
         ));
 
         int finalSongPlayTime = songPlayTime;
+        startRoundTimer(destination, currentRound, gameMode, currentRoundSong, secondSong, room, finalSongPlayTime, channelId);
+    }
+
+    private void startRoundTimer(String destination, int currentRound, GameMode gameMode, SongInfo currentRoundSong, SongInfo secondSong, Room room, int finalSongPlayTime, Long channelId) {
         gameTimerManager.handleRoundStart(destination, currentRound, gameMode, currentRoundSong, secondSong, room.getId(), () -> {
             // 카운트다운 완료 후 실행될 코드
-            inGameManager.resetAnswered(room.getId());
-
-            gameTimerManager.scheduleSongPlayTime(
-                    destination,
-                    finalSongPlayTime,
-                    room.getId(),
-                    () -> triggerEndEvent(destination, channelId, room)
-            );
-            inGameManager.updateIsSongPlaying(room.getId());
+            updateForNewRound(room);
+            startSongPlayTimer(destination, finalSongPlayTime, room, channelId);
         });
+    }
+
+    private void startSongPlayTimer(String destination, int finalSongPlayTime, Room room, Long channelId) {
+        gameTimerManager.scheduleSongPlayTime(
+                destination,
+                finalSongPlayTime,
+                room.getId(),
+                () -> triggerEndEvent(destination, channelId, room)
+        );
+    }
+
+    private void updateForNewRound(Room room) {
+        inGameManager.resetAnswered(room.getId());
+        inGameManager.updateIsSongPlaying(room.getId());
     }
 
     private void triggerEndEvent(String destination, Long channelId, Room room) {
@@ -127,11 +138,7 @@ public class GeneralGameService {
                 sendGameResult(destination, room.getId(), null);
             }
 
-            try {
-                Thread.sleep(4000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            GameUtil.sleep(4000);
             applicationEventPublisher.publishEvent(new GameRoundLogEvent(
                     room,
                     GameRoundLogEvent.Type.END,
