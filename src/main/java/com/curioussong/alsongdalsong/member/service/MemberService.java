@@ -3,6 +3,7 @@ package com.curioussong.alsongdalsong.member.service;
 import com.curioussong.alsongdalsong.channel.domain.Channel;
 import com.curioussong.alsongdalsong.channel.repository.ChannelRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
+import com.curioussong.alsongdalsong.member.dto.MemberStatus;
 import com.curioussong.alsongdalsong.member.dto.MemberStatusDTO;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.member.service.external.ToxicUserName;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -65,11 +67,9 @@ public class MemberService {
         memberRepository.save(member);
     }
 
-    public List<MemberStatusDTO> getChannelMembers(Long channelId) {
-        return memberRepository.findByCurrentChannelIdWithRoom(channelId)
-                .stream()
-                .map(MemberStatusDTO::from)
-                .toList();
+    public MemberStatusDTO getChannelMembers(Long channelId) {
+        List<Member> members = memberRepository.findByCurrentChannelIdWithRoom(channelId);
+        return MemberStatusDTO.from(members);
     }
 
     public void changeCharacterColor(String username, String colorCode) {

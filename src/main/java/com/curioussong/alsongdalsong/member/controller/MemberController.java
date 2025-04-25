@@ -17,8 +17,8 @@ public class MemberController {
     private final MemberService memberService;
 
     @GetMapping("{channelId}")
-    public ResponseEntity<List<MemberStatusDTO>> getChannelMembers(@PathVariable("channelId") Long channelId) {
-        List<MemberStatusDTO> members = memberService.getChannelMembers(channelId);
+    public ResponseEntity<MemberStatusDTO> getChannelMembers(@PathVariable("channelId") Long channelId) {
+        MemberStatusDTO members = memberService.getChannelMembers(channelId);
         return ResponseEntity.ok(members);
     }
 
