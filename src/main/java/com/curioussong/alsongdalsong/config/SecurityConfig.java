@@ -33,7 +33,8 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/error",
                                 "/sse/**",
-                                "/channel")
+                                "/channel",
+                                "/ws/**")
                         .permitAll()
                         .anyRequest().authenticated()
                 )
