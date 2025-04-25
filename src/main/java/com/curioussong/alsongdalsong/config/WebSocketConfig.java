@@ -21,7 +21,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompExceptionHandler stompExceptionHandler;
     private final StompJwtChannelInterceptor stompJwtChannelInterceptor;
-    private final StompChannelInterceptor stompChannelInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -54,6 +53,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration
-                .interceptors(stompJwtChannelInterceptor, stompChannelInterceptor);
+                .interceptors(stompJwtChannelInterceptor);
     }
 }

@@ -31,12 +31,19 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
                     if (jwtTokenProvider.validateToken(token)) {
                         Authentication auth = jwtTokenProvider.getAuthentication(token);
                         accessor.setUser(auth);
+                        return message;
                     }
                 } catch (Exception e) {
                     log.debug("STOMP JWT 인증 실패: {}", e.getMessage());
                 }
             }
+        } else if (isHeartbeat(accessor)) {
+            return message;
         }
-        return message;
+        return null;
+    }
+
+    private boolean isHeartbeat(StompHeaderAccessor accessor) {
+        return accessor.getMessage() == null && accessor.getCommand() == null;
     }
 }
