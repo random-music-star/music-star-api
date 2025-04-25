@@ -21,7 +21,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final StompExceptionHandler stompExceptionHandler;
     private final StompJwtChannelInterceptor stompJwtChannelInterceptor;
-    private final StompChannelInterceptor stompChannelInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -33,7 +32,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         registry.enableSimpleBroker("/topic", "/queue")
-                .setHeartbeatValue(new long[]{30000, 30000})
+                .setHeartbeatValue(new long[]{3000, 3000})
                 .setTaskScheduler(heartBeatScheduler());
         registry.setUserDestinationPrefix("/user");
         registry.setApplicationDestinationPrefixes("/app");
@@ -54,6 +53,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureClientInboundChannel(ChannelRegistration registration) {
         registration
-                .interceptors(stompJwtChannelInterceptor, stompChannelInterceptor);
+                .interceptors(stompJwtChannelInterceptor);
     }
 }

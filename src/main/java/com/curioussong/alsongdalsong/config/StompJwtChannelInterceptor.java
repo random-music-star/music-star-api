@@ -37,7 +37,13 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
                     log.debug("STOMP JWT 인증 실패: {}", e.getMessage());
                 }
             }
+        } else if (isHeartbeat(accessor)) {
+            return message;
         }
         return null;
+    }
+
+    private boolean isHeartbeat(StompHeaderAccessor accessor) {
+        return accessor.getMessage() == null && accessor.getCommand() == null;
     }
 }
