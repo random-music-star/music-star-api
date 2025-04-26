@@ -23,20 +23,20 @@ public class StompJwtChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
 
         if (accessor != null && accessor.getCommand() != null) {
-            String authHeader = accessor.getFirstNativeHeader("Authorization");
+                String authHeader = accessor.getFirstNativeHeader("Authorization");
 
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                String token = authHeader.substring(7);
-                try {
-                    if (jwtTokenProvider.validateToken(token)) {
-                        Authentication auth = jwtTokenProvider.getAuthentication(token);
-                        accessor.setUser(auth);
-                        return message;
+                if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                    String token = authHeader.substring(7);
+                    try {
+                        if (jwtTokenProvider.validateToken(token)) {
+                            Authentication auth = jwtTokenProvider.getAuthentication(token);
+                            accessor.setUser(auth);
+                            return message;
+                        }
+                    } catch (Exception e) {
+                        log.debug("STOMP JWT 인증 실패: {}", e.getMessage());
                     }
-                } catch (Exception e) {
-                    log.debug("STOMP JWT 인증 실패: {}", e.getMessage());
                 }
-            }
         } else if (isHeartbeat(accessor)) {
             return message;
         }
