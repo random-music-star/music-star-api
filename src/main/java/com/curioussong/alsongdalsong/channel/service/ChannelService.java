@@ -98,6 +98,6 @@ public class ChannelService {
         Member member = memberRepository.findByUsername(chatRequestDTO.getRequest().getSender())
                 .orElseThrow(() -> new StompException(StompError.USER_NOT_FOUND));
 
-        eventPublisher.publishEvent(new ChannelChatSaveEvent(member, channel, chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
+//        eventPublisher.publishEvent(new ChannelChatSaveEvent(member, channel, chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
     }
 }
