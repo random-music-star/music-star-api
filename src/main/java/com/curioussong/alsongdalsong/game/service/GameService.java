@@ -61,9 +61,10 @@ public class GameService {
             return;
         }
 
-        if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
-            saveInGameChat(chatRequestDTO, roomId);
-        }
+        // 추후 mongodb 연결 시 주석 해제
+//        if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
+//            saveInGameChat(chatRequestDTO, roomId);
+//        }
 
         gameMessageSender.sendChat(chatRequestDTO, destination);
 
