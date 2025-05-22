@@ -97,6 +97,19 @@ public class GameTimerManager {
     }
 
     public void initializeSchedulers(String roomId) {
+        if (roomConsonantHintTimerSchedulers.containsKey(roomId)) {
+            roomConsonantHintTimerSchedulers.get(roomId).shutdownNow();
+            roomConsonantHintTimerSchedulers.remove(roomId);
+        }
+        if (roomSingerHintTimerSchedulers.containsKey(roomId)) {
+            roomSingerHintTimerSchedulers.get(roomId).shutdownNow();
+            roomSingerHintTimerSchedulers.remove(roomId);
+        }
+        if (roomRoundTimerSchedulers.containsKey(roomId)) {
+            roomRoundTimerSchedulers.get(roomId).shutdownNow();
+            roomRoundTimerSchedulers.remove(roomId);
+        }
+
         roomConsonantHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
         roomSingerHintTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
         roomRoundTimerSchedulers.put(roomId, Executors.newSingleThreadScheduledExecutor());
@@ -148,6 +161,21 @@ public class GameTimerManager {
 
         if (roomRoundTimerSchedulers.containsKey(roomId)) {
             roomRoundTimerSchedulers.get(roomId).shutdownNow();
+        }
+    }
+
+    public void clearAllTimers(String roomId) {
+        if (roomConsonantHintTimerSchedulers.containsKey(roomId)) {
+            roomConsonantHintTimerSchedulers.get(roomId).shutdownNow();
+            roomConsonantHintTimerSchedulers.remove(roomId);
+        }
+        if (roomSingerHintTimerSchedulers.containsKey(roomId)) {
+            roomSingerHintTimerSchedulers.get(roomId).shutdownNow();
+            roomSingerHintTimerSchedulers.remove(roomId);
+        }
+        if (roomRoundTimerSchedulers.containsKey(roomId)) {
+            roomRoundTimerSchedulers.get(roomId).shutdownNow();
+            roomRoundTimerSchedulers.remove(roomId);
         }
     }
 }
