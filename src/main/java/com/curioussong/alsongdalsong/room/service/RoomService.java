@@ -9,6 +9,7 @@ import com.curioussong.alsongdalsong.game.domain.RoomManager;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
+import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
@@ -53,6 +54,7 @@ public class RoomService {
     private final RoomManager roomManager;
     private final InGameManager inGameManager;
     private final GameMessageSender gameMessageSender;
+    private final GameTimerManager gameTimerManager;
 
     private static final List<Integer> VALID_YEARS = List.of(1970, 1980, 1990, 2000, 2010, 2020, 2021, 2022, 2023, 2024);
 
@@ -138,6 +140,7 @@ public class RoomService {
     private boolean handleEmptyRoom(Room room, Long channelId) {
         // 게임 중이었다면 관련 자원 정리
         if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
+            gameTimerManager.clearAllTimers(room.getId());
             inGameManager.clear(room.getId());
         }
 
