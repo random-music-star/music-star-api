@@ -10,6 +10,7 @@ import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
 import com.curioussong.alsongdalsong.game.event.GameChatSaveEvent;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
+import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.gameround.domain.GameRound;
 import com.curioussong.alsongdalsong.gameround.repository.GameRoundRepository;
 import com.curioussong.alsongdalsong.gamesession.domain.GameSession;
@@ -41,6 +42,7 @@ public class GameService {
     private final MemberService memberService;
     private final RoomRepository roomRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final GameStrategyFactory strategyFactory;
 
     private final RoomManager roomManager;
     private final InGameManager inGameManager;
@@ -49,12 +51,14 @@ public class GameService {
     private final BoardGameService boardGameService;
     private final GameRoundRepository gameRoundRepository;
     private final GameSessionRepository gameSessionRepository;
+    private final GameTimerManager gameTimerManager;
 
     public void roomChatMessage(ChatRequestDTO chatRequestDTO, Long channelId, String roomId) {
         String destination = Destination.room(channelId, roomId);
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new StompException(StompError.ROOM_NOT_FOUND));
 
+        // 대기 중인 방에서는 채팅 메시지 필터링 수행
         if (room.getStatus() == Room.RoomStatus.WAITING) {
             filterMessage(chatRequestDTO);
             gameMessageSender.sendChat(chatRequestDTO, destination);
@@ -66,22 +70,19 @@ public class GameService {
 //            saveInGameChat(chatRequestDTO, roomId);
 //        }
 
+        // 사용자들에게 채팅 메시지 전송
         gameMessageSender.sendChat(chatRequestDTO, destination);
 
         String message = chatRequestDTO.getRequest().getMessage();
         String sender = chatRequestDTO.getRequest().getSender();
-        if (room.getFormat() == Room.RoomFormat.GENERAL) {
-            if (isSkipChat(message)) {
-                generalGameService.incrementSkipCount(roomId, channelId, sender);
-            } else if (generalGameService.checkAnswer(chatRequestDTO, roomId)) {
-                generalGameService.handleAnswer(sender, channelId, roomId);
-            }
-        } else if (room.getFormat() == Room.RoomFormat.BOARD) {
-            if (isSkipChat(message)) {
-                boardGameService.incrementSkipCount(roomId, channelId, sender);
-            } else if (boardGameService.checkAnswer(chatRequestDTO, roomId)) {
-                boardGameService.handleAnswer(sender, channelId, roomId);
-            }
+        Room.RoomFormat roomFormat = room.getFormat();
+
+        // 방에 따라 다르게 처리
+        GameStrategy strategy = strategyFactory.getStrategy(roomFormat);
+        if (isSkipChat(message)) {
+            strategy.incrementSkipCount(roomId, channelId, sender);
+        } else if (strategy.checkAnswer(chatRequestDTO, roomId)) {
+            strategy.handleAnswer(sender, channelId, roomId);
         }
     }
 
@@ -150,13 +151,10 @@ public class GameService {
         sendMessagesForStart(destination, room);
 
         inGameManager.initializeGameSettings(room);
-        if (room.getFormat() == Room.RoomFormat.GENERAL) {
-            generalGameService.startRound(channelId, room, destination);
-        } else {
-            boardGameService.startRound(channelId, room, destination);
-        }
 
-        // TODO : readyStatusMap.remove(roomId);
+        Room.RoomFormat roomFormat = room.getFormat();
+        GameStrategy strategy = strategyFactory.getStrategy(roomFormat);
+        strategy.startRound(channelId, room, destination);
     }
 
     private boolean isNotReadyToStart(Room room) {

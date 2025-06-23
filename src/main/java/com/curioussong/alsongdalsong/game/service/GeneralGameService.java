@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class GeneralGameService {
+public class GeneralGameService implements GameStrategy {
 
     private final MemberService memberService;
     private final RoomRepository roomRepository;
@@ -62,7 +62,7 @@ public class GeneralGameService {
         handleRoundStart(destination, channelId, room);
     }
 
-    private void initializeRound(Room room) {
+    public void initializeRound(Room room) {
         gameTimerManager.initializeSchedulers(room.getId()); // 타이머 초기화
         inGameManager.initializeRoundWinner(room); // 라운드 정답자 초기화
         inGameManager.initializeSkipStatus(room); // 스킵 초기화
@@ -119,7 +119,7 @@ public class GeneralGameService {
         inGameManager.updateIsSongPlaying(room.getId());
     }
 
-    private void triggerEndEvent(String destination, Long channelId, Room room) {
+    public void triggerEndEvent(String destination, Long channelId, Room room) {
         log.debug("End event for channel {} in room {}", channelId, room.getId());
         if (room.getMembers().isEmpty() || inGameManager.getInGameInfo(room.getId()) == null) {
             log.info("방 {} 게임 종료 - 멤버가 없거나 게임 정보가 삭제되어 처리를 중단합니다.", room.getId());
@@ -158,7 +158,7 @@ public class GeneralGameService {
         }
     }
 
-    private void endGame(Room room, String destination) {
+    public void endGame(Room room, String destination) {
         if (room.getMembers().isEmpty() || inGameManager.getInGameInfo(room.getId()) == null) {
             log.info("방 {} 게임 종료 - 멤버가 없거나 게임 정보가 삭제되어 처리를 중단합니다.", room.getId());
             return;
@@ -194,7 +194,7 @@ public class GeneralGameService {
     }
 
     // 최고 점수를 가진 플레이어 찾기
-    private List<String> findWinnerByScore(String roomId) {
+    public List<String> findWinnerByScore(String roomId) {
         Map<String, Integer> scores = inGameManager.getScore(roomId);
         List<String> winners = new ArrayList<>();
 
