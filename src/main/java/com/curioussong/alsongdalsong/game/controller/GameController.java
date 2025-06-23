@@ -3,7 +3,7 @@ package com.curioussong.alsongdalsong.game.controller;
 import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.start.StartRequest;
 import com.curioussong.alsongdalsong.game.dto.userinfo.ReadyRequest;
-import com.curioussong.alsongdalsong.game.service.ChatHandler;
+import com.curioussong.alsongdalsong.game.service.GameChatHandler;
 import com.curioussong.alsongdalsong.game.service.GameService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class GameController {
 
     private final GameService gameService;
-    private final ChatHandler chatHandler;
+    private final GameChatHandler gameChatHandler;
 
     @MessageMapping("/channel/{channelId}/room/{roomId}/start")
     @SendTo("/topic/channel/{channelId}/room/{roomId}")
@@ -36,6 +36,6 @@ public class GameController {
 
     @MessageMapping("/channel/{channelId}/room/{roomId}")
     public void handleRoomChat(ChatRequestDTO chatRequestDTO, @DestinationVariable Long channelId, @DestinationVariable String roomId) {
-        chatHandler.handleChat(chatRequestDTO, channelId, roomId);
+        gameChatHandler.handleChat(chatRequestDTO, channelId, roomId);
     }
 }

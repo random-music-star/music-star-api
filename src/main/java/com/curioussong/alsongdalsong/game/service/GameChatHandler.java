@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class ChatHandler {
+public class GameChatHandler {
 
     private final RoomRepository roomRepository;
     private final GameStrategyFactory gameStrategyFactory;
