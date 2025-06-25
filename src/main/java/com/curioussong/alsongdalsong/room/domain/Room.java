@@ -148,4 +148,8 @@ public class Room {
     public void assignRoomNumber(Long roomNumber) {
         this.roomNumber = roomNumber;
     }
+
+    public boolean isHost(Member member) {
+        return this.getHost().getId().equals(member.getId());
+    }
 }

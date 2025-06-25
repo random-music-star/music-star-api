@@ -11,13 +11,13 @@ import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.member.domain.Member;
-import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.*;
+import com.curioussong.alsongdalsong.room.event.RoomEventNotifier;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
-import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
+import com.curioussong.alsongdalsong.room.util.RoomValidator;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
@@ -26,7 +26,6 @@ import com.curioussong.alsongdalsong.common.util.Destination;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -45,7 +44,6 @@ import java.util.stream.Collectors;
 public class RoomService {
 
     private final RoomRepository roomRepository;
-    private final ApplicationEventPublisher eventPublisher;
     private final MemberRepository memberRepository;
     private final GameRepository gameRepository;
     private final RoomYearRepository roomYearRepository;
@@ -55,8 +53,7 @@ public class RoomService {
     private final InGameManager inGameManager;
     private final GameMessageSender gameMessageSender;
     private final GameTimerManager gameTimerManager;
-
-    private static final List<Integer> VALID_YEARS = List.of(1970, 1980, 1990, 2000, 2010, 2020, 2021, 2022, 2023, 2024);
+    private final RoomEventNotifier roomEventNotifier;
 
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
@@ -66,10 +63,10 @@ public class RoomService {
                         "존재하지 않는 채널입니다."
                 ));
 
-        validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
+        RoomValidator.validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
 
         Room room = createRoomEntity(member, channel, request);
-        eventPublisher.publishEvent(new MemberLocationEvent(channel.getId(), member));
+        roomEventNotifier.notifyMemberLocation(channel.getId(), member);
         setupRoomGames(room, request.getGameModes());
         setupRoomYears(room, request.getSelectedYears());
         notifyRoomCreation(room, request.getChannelId());
@@ -95,9 +92,9 @@ public class RoomService {
 
         sendRoomAndUserInfo(channelId, roomId, room);
 
-        eventPublisher.publishEvent(new UserJoinedEvent(room.getId(), sessionId, userName));
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED));
-        eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
+        roomEventNotifier.notifyUserJoined(room.getId(), sessionId, userName);
+        roomEventNotifier.notifyRommEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED);
+        roomEventNotifier.notifyMemberLocation(channelId, member);
     }
 
     @Transactional
@@ -115,7 +112,7 @@ public class RoomService {
 
         updateClientsAfterLeave(channelId, roomId, room, isFinished);
 
-        eventPublisher.publishEvent(new MemberLocationEvent(channelId, member));
+        roomEventNotifier.notifyMemberLocation(channelId, member);
         log.debug("이벤트 발행 완료");
     }
 
@@ -149,7 +146,7 @@ public class RoomService {
         roomRepository.save(room);
         roomRepository.flush(); // 즉시 DB에 반영
 
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.FINISHED));
+        roomEventNotifier.notifyRommEvent(room, channelId, RoomUpdatedEvent.ActionType.FINISHED);
         return true;
     }
 
@@ -164,14 +161,14 @@ public class RoomService {
     private void updateClientsAfterLeave(Long channelId, String roomId, Room room, boolean isFinished) {
         if (!isFinished) {
             sendRoomAndUserInfo(channelId, roomId, room);
-            eventPublisher.publishEvent(new RoomUpdatedEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED));
+            roomEventNotifier.notifyRommEvent(room, channelId, RoomUpdatedEvent.ActionType.UPDATED);
         } else {
             sendRoomAndUserInfo(channelId, roomId, room);
         }
     }
 
     private boolean isHostLeaving(Room room, Member member) {
-        return member.getId().equals(room.getHost().getId());
+        return room.isHost(member);
     }
 
     private boolean delegateHost(Room room, Member member) {
@@ -179,7 +176,7 @@ public class RoomService {
         if (remainingMembers.isEmpty()) {
             room.updateStatus(Room.RoomStatus.FINISHED);
             roomRepository.save(room);
-            eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.FINISHED));
+            roomEventNotifier.notifyRommEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.FINISHED);
             return true;
         } else {
             Member newHost = remainingMembers.get(0);
@@ -193,7 +190,7 @@ public class RoomService {
     public void updateRoom(Member member, UpdateRequest request) {
         Room room = findRoomById(request.getRoomId());
 
-        validateRoomHost(room, member);
+        RoomValidator.validateRoomHost(room, member);
 
         if(!room.getFormat().name().equals(request.getFormat())) {
             throw new HttpClientErrorException(
@@ -202,7 +199,7 @@ public class RoomService {
             );
         }
 
-        validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
+        RoomValidator.validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
 
         if (room.getMembers().size() > request.getMaxPlayer()) {
             throw new HttpClientErrorException(
@@ -220,7 +217,7 @@ public class RoomService {
         updateRoomYears(room, request.getSelectedYears());
 
         roomManager.updateRoomInfo(room, request.getSelectedYears());
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.UPDATED));
+        roomEventNotifier.notifyRommEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.UPDATED);
     }
 
     @Transactional(readOnly=true)
@@ -347,46 +344,6 @@ public class RoomService {
         return (maxRoomNumber != null) ? maxRoomNumber + 1 : 1;
     }
 
-
-    private void validateRoomSettings(String format, Integer maxPlayer, Integer maxGameRound, String password, String title){
-        if("BOARD".equals(format)){
-            if(maxPlayer>6 || maxPlayer<2) {
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "보드판 맵의 최대 인원은 2~6명입니다."
-                );
-            }
-        } else if ("GENERAL".equals(format)) {
-            if(maxPlayer>60 || maxPlayer<2){
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "점수판 맵의 최대 인원은 2~60명입니다. "
-                );
-            }
-        }
-
-        if(!(maxGameRound == 5 || maxGameRound == 10 || maxGameRound == 20 || maxGameRound == 30)){
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "게임 라운드는 5, 10, 20, 30 중 하나여야 합니다."
-            );
-        }
-
-        if(password.length()>30){
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "방의 비밀번호는 30자 이하여야 합니다."
-            );
-        }
-
-        if(title.length() > 15){
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "방의 제목은 15 이내여야 합니다."
-            );
-        }
-    }
-
     private List<Game> getGamesFromModes(List<GameMode> gameModes) {
         if (gameModes == null || gameModes.isEmpty()) {
             throw new HttpClientErrorException(
@@ -408,24 +365,6 @@ public class RoomService {
                 .distinct()
                 .map(year -> new RoomYear(room, year))
                 .toList();
-    }
-
-    private void validateYears(List<Integer> years) {
-        if (years == null || years.isEmpty()) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "선택된 연도가 없습니다."
-            );
-        }
-
-        for (Integer year : years) {
-            if (year == null || !VALID_YEARS.contains(year)) {
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "지원하지 않는 연도가 포함되어 있습니다"
-                );
-            }
-        }
     }
 
     private Room findRoomById(String roomId) {
@@ -450,15 +389,6 @@ public class RoomService {
         gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
     }
 
-    private void validateRoomHost(Room room, Member member) {
-        if (!room.getHost().getId().equals(member.getId())) {
-            throw new HttpClientErrorException(
-                    HttpStatus.UNAUTHORIZED,
-                    "방 설정은 방장만 변경 가능합니다."
-            );
-        }
-    }
-
     private void updateRoomGames(Room room, List<GameMode> gameModes) {
         roomGameRepository.deleteAllByRoom(room);
         List<Game> games = getGamesFromModes(gameModes);
@@ -472,7 +402,7 @@ public class RoomService {
         roomYearRepository.deleteAllByRoom(room);
         roomYearRepository.flush();
 
-        validateYears(selectedYears);
+        RoomValidator.validateYears(selectedYears);
         List<RoomYear> newRoomYears = createRoomYears(room, selectedYears);
         roomYearRepository.saveAll(newRoomYears);
     }
@@ -504,12 +434,12 @@ public class RoomService {
     }
 
     private void setupRoomYears(Room room, List<Integer> selectedYears) {
-        validateYears(selectedYears);
+        RoomValidator.validateYears(selectedYears);
         List<RoomYear> roomYears = createRoomYears(room, selectedYears);
         roomYearRepository.saveAll(roomYears);
     }
     private void notifyRoomCreation(Room room, Long channelId) {
-        eventPublisher.publishEvent(new RoomUpdatedEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.CREATED));
+        roomEventNotifier.notifyRommEvent(room, room.getChannel().getId(), RoomUpdatedEvent.ActionType.CREATED);
         roomManager.addRoomInfo(room, channelId);
     }
 
