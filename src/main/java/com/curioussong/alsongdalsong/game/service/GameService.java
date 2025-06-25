@@ -2,34 +2,25 @@ package com.curioussong.alsongdalsong.game.service;
 
 import com.curioussong.alsongdalsong.common.error.stomperror.StompError;
 import com.curioussong.alsongdalsong.common.error.stomperror.StompException;
-import com.curioussong.alsongdalsong.common.util.BadWordFilter;
+import com.curioussong.alsongdalsong.common.util.Destination;
 import com.curioussong.alsongdalsong.game.domain.InGameManager;
 import com.curioussong.alsongdalsong.game.domain.RoomManager;
-import com.curioussong.alsongdalsong.game.dto.chat.ChatRequestDTO;
 import com.curioussong.alsongdalsong.game.dto.userinfo.UserInfo;
-import com.curioussong.alsongdalsong.game.event.GameChatSaveEvent;
 import com.curioussong.alsongdalsong.game.event.GameStatusEvent;
 import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
-import com.curioussong.alsongdalsong.gameround.domain.GameRound;
 import com.curioussong.alsongdalsong.gameround.repository.GameRoundRepository;
-import com.curioussong.alsongdalsong.gamesession.domain.GameSession;
 import com.curioussong.alsongdalsong.gamesession.event.GameSessionLogEvent;
 import com.curioussong.alsongdalsong.gamesession.repository.GameSessionRepository;
 import com.curioussong.alsongdalsong.member.domain.Member;
 import com.curioussong.alsongdalsong.member.service.MemberService;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
-import com.curioussong.alsongdalsong.common.util.Destination;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.HttpClientErrorException;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -41,68 +32,13 @@ public class GameService {
     private final MemberService memberService;
     private final RoomRepository roomRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final GameStrategyFactory strategyFactory;
 
     private final RoomManager roomManager;
     private final InGameManager inGameManager;
     private final GameMessageSender gameMessageSender;
-    private final GeneralGameService generalGameService;
-    private final BoardGameService boardGameService;
     private final GameRoundRepository gameRoundRepository;
     private final GameSessionRepository gameSessionRepository;
-
-    public void roomChatMessage(ChatRequestDTO chatRequestDTO, Long channelId, String roomId) {
-        String destination = Destination.room(channelId, roomId);
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new StompException(StompError.ROOM_NOT_FOUND));
-
-        if (room.getStatus() == Room.RoomStatus.WAITING) {
-            filterMessage(chatRequestDTO);
-            gameMessageSender.sendChat(chatRequestDTO, destination);
-            return;
-        }
-
-        // 추후 mongodb 연결 시 주석 해제
-//        if (room.getStatus() == Room.RoomStatus.IN_PROGRESS) {
-//            saveInGameChat(chatRequestDTO, roomId);
-//        }
-
-        gameMessageSender.sendChat(chatRequestDTO, destination);
-
-        String message = chatRequestDTO.getRequest().getMessage();
-        String sender = chatRequestDTO.getRequest().getSender();
-        if (room.getFormat() == Room.RoomFormat.GENERAL) {
-            if (isSkipChat(message)) {
-                generalGameService.incrementSkipCount(roomId, channelId, sender);
-            } else if (generalGameService.checkAnswer(chatRequestDTO, roomId)) {
-                generalGameService.handleAnswer(sender, channelId, roomId);
-            }
-        } else if (room.getFormat() == Room.RoomFormat.BOARD) {
-            if (isSkipChat(message)) {
-                boardGameService.incrementSkipCount(roomId, channelId, sender);
-            } else if (boardGameService.checkAnswer(chatRequestDTO, roomId)) {
-                boardGameService.handleAnswer(sender, channelId, roomId);
-            }
-        }
-    }
-
-    private void filterMessage(ChatRequestDTO chatRequestDTO) {
-        String filteredMessage = BadWordFilter.filter(chatRequestDTO.getRequest().getMessage());
-        chatRequestDTO.getRequest().setMessage(filteredMessage);
-    }
-
-    private void saveInGameChat(ChatRequestDTO chatRequestDTO, String roomId) {
-        Member member = memberService.getMemberByToken(chatRequestDTO.getRequest().getSender());
-        GameSession gameSession = gameSessionRepository.findTopByRoomIdOrderByStartTimeDesc(roomId)
-                .orElseThrow(() -> new StompException(StompError.GAME_SESSION_NOT_FOUND));
-        int currentRound = inGameManager.getCurrentRound(roomId);
-        GameRound round = gameRoundRepository.findByGameSessionIdAndRoundNumber(gameSession.getId(), currentRound)
-                .orElseThrow(() -> new StompException(StompError.GAME_ROUND_NOT_FOUND));
-        eventPublisher.publishEvent(new GameChatSaveEvent(member.getId(), gameSession.getId(), round.getId(), chatRequestDTO.getRequest().getMessage(), LocalDateTime.now()));
-    }
-
-    private boolean isSkipChat(String message) {
-        return ".".equals(message);
-    }
 
     //    Todo: 방에 입장한 유저만 레디 상태 변경이 가능하도록 변경 필요
     @Transactional
@@ -150,13 +86,10 @@ public class GameService {
         sendMessagesForStart(destination, room);
 
         inGameManager.initializeGameSettings(room);
-        if (room.getFormat() == Room.RoomFormat.GENERAL) {
-            generalGameService.startRound(channelId, room, destination);
-        } else {
-            boardGameService.startRound(channelId, room, destination);
-        }
 
-        // TODO : readyStatusMap.remove(roomId);
+        Room.RoomFormat roomFormat = room.getFormat();
+        GameStrategy strategy = strategyFactory.getStrategy(roomFormat);
+        strategy.startRound(channelId, room, destination);
     }
 
     private boolean isNotReadyToStart(Room room) {
