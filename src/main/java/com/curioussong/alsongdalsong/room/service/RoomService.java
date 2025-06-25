@@ -11,14 +11,13 @@ import com.curioussong.alsongdalsong.game.messaging.GameMessageSender;
 import com.curioussong.alsongdalsong.game.repository.GameRepository;
 import com.curioussong.alsongdalsong.game.timer.GameTimerManager;
 import com.curioussong.alsongdalsong.member.domain.Member;
-import com.curioussong.alsongdalsong.member.event.MemberLocationEvent;
 import com.curioussong.alsongdalsong.member.repository.MemberRepository;
 import com.curioussong.alsongdalsong.room.domain.Room;
 import com.curioussong.alsongdalsong.room.dto.*;
 import com.curioussong.alsongdalsong.room.event.RoomEventNotifier;
 import com.curioussong.alsongdalsong.room.event.RoomUpdatedEvent;
-import com.curioussong.alsongdalsong.room.event.UserJoinedEvent;
 import com.curioussong.alsongdalsong.room.repository.RoomRepository;
+import com.curioussong.alsongdalsong.room.util.RoomValidator;
 import com.curioussong.alsongdalsong.roomgame.domain.RoomGame;
 import com.curioussong.alsongdalsong.roomgame.repository.RoomGameRepository;
 import com.curioussong.alsongdalsong.roomyear.domain.RoomYear;
@@ -56,8 +55,6 @@ public class RoomService {
     private final GameTimerManager gameTimerManager;
     private final RoomEventNotifier roomEventNotifier;
 
-    private static final List<Integer> VALID_YEARS = List.of(1970, 1980, 1990, 2000, 2010, 2020, 2021, 2022, 2023, 2024);
-
     @Transactional
     public CreateResponse createRoom(Member member, CreateRequest request) {
         Channel channel = channelRepository.findById(request.getChannelId())
@@ -66,7 +63,7 @@ public class RoomService {
                         "존재하지 않는 채널입니다."
                 ));
 
-        validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
+        RoomValidator.validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
 
         Room room = createRoomEntity(member, channel, request);
         roomEventNotifier.notifyMemberLocation(channel.getId(), member);
@@ -171,7 +168,7 @@ public class RoomService {
     }
 
     private boolean isHostLeaving(Room room, Member member) {
-        return member.getId().equals(room.getHost().getId());
+        return room.isHost(member);
     }
 
     private boolean delegateHost(Room room, Member member) {
@@ -193,7 +190,7 @@ public class RoomService {
     public void updateRoom(Member member, UpdateRequest request) {
         Room room = findRoomById(request.getRoomId());
 
-        validateRoomHost(room, member);
+        RoomValidator.validateRoomHost(room, member);
 
         if(!room.getFormat().name().equals(request.getFormat())) {
             throw new HttpClientErrorException(
@@ -202,7 +199,7 @@ public class RoomService {
             );
         }
 
-        validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
+        RoomValidator.validateRoomSettings(request.getFormat(), request.getMaxPlayer(), request.getMaxGameRound(), request.getPassword(), request.getTitle());
 
         if (room.getMembers().size() > request.getMaxPlayer()) {
             throw new HttpClientErrorException(
@@ -347,46 +344,6 @@ public class RoomService {
         return (maxRoomNumber != null) ? maxRoomNumber + 1 : 1;
     }
 
-
-    private void validateRoomSettings(String format, Integer maxPlayer, Integer maxGameRound, String password, String title){
-        if("BOARD".equals(format)){
-            if(maxPlayer>6 || maxPlayer<2) {
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "보드판 맵의 최대 인원은 2~6명입니다."
-                );
-            }
-        } else if ("GENERAL".equals(format)) {
-            if(maxPlayer>60 || maxPlayer<2){
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "점수판 맵의 최대 인원은 2~60명입니다. "
-                );
-            }
-        }
-
-        if(!(maxGameRound == 5 || maxGameRound == 10 || maxGameRound == 20 || maxGameRound == 30)){
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "게임 라운드는 5, 10, 20, 30 중 하나여야 합니다."
-            );
-        }
-
-        if(password.length()>30){
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "방의 비밀번호는 30자 이하여야 합니다."
-            );
-        }
-
-        if(title.length() > 15){
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "방의 제목은 15 이내여야 합니다."
-            );
-        }
-    }
-
     private List<Game> getGamesFromModes(List<GameMode> gameModes) {
         if (gameModes == null || gameModes.isEmpty()) {
             throw new HttpClientErrorException(
@@ -408,24 +365,6 @@ public class RoomService {
                 .distinct()
                 .map(year -> new RoomYear(room, year))
                 .toList();
-    }
-
-    private void validateYears(List<Integer> years) {
-        if (years == null || years.isEmpty()) {
-            throw new HttpClientErrorException(
-                    HttpStatus.BAD_REQUEST,
-                    "선택된 연도가 없습니다."
-            );
-        }
-
-        for (Integer year : years) {
-            if (year == null || !VALID_YEARS.contains(year)) {
-                throw new HttpClientErrorException(
-                        HttpStatus.BAD_REQUEST,
-                        "지원하지 않는 연도가 포함되어 있습니다"
-                );
-            }
-        }
     }
 
     private Room findRoomById(String roomId) {
@@ -450,15 +389,6 @@ public class RoomService {
         gameMessageSender.sendUserInfo(destination, userInfoList, allReady);
     }
 
-    private void validateRoomHost(Room room, Member member) {
-        if (!room.getHost().getId().equals(member.getId())) {
-            throw new HttpClientErrorException(
-                    HttpStatus.UNAUTHORIZED,
-                    "방 설정은 방장만 변경 가능합니다."
-            );
-        }
-    }
-
     private void updateRoomGames(Room room, List<GameMode> gameModes) {
         roomGameRepository.deleteAllByRoom(room);
         List<Game> games = getGamesFromModes(gameModes);
@@ -472,7 +402,7 @@ public class RoomService {
         roomYearRepository.deleteAllByRoom(room);
         roomYearRepository.flush();
 
-        validateYears(selectedYears);
+        RoomValidator.validateYears(selectedYears);
         List<RoomYear> newRoomYears = createRoomYears(room, selectedYears);
         roomYearRepository.saveAll(newRoomYears);
     }
@@ -504,7 +434,7 @@ public class RoomService {
     }
 
     private void setupRoomYears(Room room, List<Integer> selectedYears) {
-        validateYears(selectedYears);
+        RoomValidator.validateYears(selectedYears);
         List<RoomYear> roomYears = createRoomYears(room, selectedYears);
         roomYearRepository.saveAll(roomYears);
     }
