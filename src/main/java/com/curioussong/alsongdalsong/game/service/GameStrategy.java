@@ -16,4 +16,5 @@ public interface GameStrategy {
     void endGame(Room room, String destination);
     void handleRoundStart(String destination, Long channelId, Room room);
     List<String> findWinnerByScore(String roomId);
+    void sendGameResult(String destination, String roomId, String userName);
 }
